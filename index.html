@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0718">
+  <meta name="description" content="Jeu de combat 2D : 17 combattants, 10 arènes, mode Histoire. Fonctionne hors ligne.">
+  <meta name="format-detection" content="telephone=no">
+  <!-- Application web : écran d'accueil iPhone / Android, plein écran, hors ligne -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Légendes">
+  <meta name="application-name" content="Choc des Légendes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <!-- Écrans de démarrage : iPhone 16e / 12 / 13 / 14, puis iPhone 15 / 16 -->
+  <link rel="apple-touch-startup-image" href="icons/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/splash-2532x1170.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)">
+  <link rel="apple-touch-startup-image" href="icons/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/splash-2556x1179.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)">
+  <title>Choc des Légendes</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="ui"></div>
+  <div id="toasts"></div>
+  <div id="rotate">
+    <div class="rot-play">
+      <div class="rot-icon">📱↻</div>
+      <div>Tournez votre appareil en mode paysage</div>
+      <div class="rot-hint ios-only">L'écran ne pivote pas ? Ouvrez le Centre de contrôle et désactivez le verrouillage de la rotation.</div>
+    </div>
+    <div class="rot-install">
+      <div class="ri-logo">CHOC DES LEGENDES</div>
+      <div class="ri-title">Installer le jeu sur l'iPhone</div>
+      <ol>
+        <li>Touchez le bouton <b>Partager</b> <svg class="ri-share" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9H6.5A1.5 1.5 0 0 0 5 10.5v9A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 17.5 9H16M12 14V3M8.5 6.5 12 3l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> de Safari<br><small>(s'il n'est pas visible : menu <b>•••</b> puis <b>Partager</b>)</small></li>
+        <li>Choisissez <b>Sur l'écran d'accueil</b>, puis <b>Ajouter</b></li>
+        <li>Lancez le jeu depuis sa nouvelle icône : plein écran, hors ligne</li>
+      </ol>
+      <div class="rot-hint">Ou tournez l'iPhone pour essayer tout de suite dans Safari.</div>
+    </div>
+  </div>
+  <div id="loading"><div class="ld-logo">CHOC DES LÉGENDES</div><div class="ld-sub">Chargement…</div></div>
+
+  <script src="js/util.js"></script>
+  <script src="js/pwa.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/rig.js"></script>
+  <script src="js/poses.js"></script>
+  <script src="js/roster.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/projectiles.js"></script>
+  <script src="js/moves.js"></script>
+  <script src="js/fighter.js"></script>
+  <script src="js/stages.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/battle.js"></script>
+  <script src="js/story.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/modes.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

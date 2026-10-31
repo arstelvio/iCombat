@@ -1,0 +1,41 @@
+# ⚔️ Choc des Légendes — version iPhone
+
+Jeu de combat 2D : 17 combattants, 10 arènes, mode Histoire, Arcade, Survie, Entraînement.
+Cette version se joue **sans installation** : pas d'App Store, pas de Mac, pas de compte Apple,
+pas de limite de 7 jours.
+
+## ▶️ Jouer
+
+**https://arstelvio.github.io/iCombat/**
+
+## 📲 Mettre le jeu sur l'écran d'accueil de l'iPhone
+
+1. Ouvrez le lien ci-dessus dans **Safari**.
+2. Touchez **Partager** (ou le menu **•••** puis **Partager**), puis **Sur l'écran d'accueil** → **Ajouter**.
+   Si une option « app web » apparaît, laissez-la activée.
+3. Lancez le jeu depuis sa nouvelle icône, **une première fois avec Internet** : il s'enregistre en entier sur
+   l'iPhone (message « Prêt à jouer hors ligne »).
+
+Le jeu a alors son icône, s'ouvre en plein écran, en paysage, et fonctionne **hors ligne**.
+
+### Bon à savoir
+- **Sauvegardes** : celles de l'icône sont séparées de celles de Safari, jouez depuis l'icône.
+  Supprimer l'icône efface ses sauvegardes.
+- **Pas de son ?** Désactivez le mode silencieux de l'iPhone.
+- **L'écran reste en portrait ?** Ouvrez le Centre de contrôle et désactivez le verrouillage de la rotation.
+- **Mises à jour** : quand une nouvelle version est en ligne, le jeu la télécharge tout seul (avec Internet)
+  et l'applique la prochaine fois que vous revenez sur l'écran titre.
+- Fonctionne aussi sur iPad, Android (Chrome → « Ajouter à l'écran d'accueil ») et ordinateur.
+- Manettes Bluetooth reconnues.
+
+## 🛠️ Ce dépôt
+
+Ce dépôt contient uniquement la version web du jeu, **générée automatiquement** depuis le dépôt du jeu
+(`tools/build-web.js`) : ne modifiez pas ces fichiers ici, ils seraient remplacés à la prochaine publication.
+Le site est servi par **GitHub Pages**.
+
+Pour activer GitHub Pages (une seule fois) : **Settings → Pages → Build and deployment →
+Source : Deploy from a branch**, choisissez la branche du dépôt et le dossier **/ (root)**, puis **Save**.
+Le lien fonctionne une à deux minutes plus tard.
+
+Polices : Bangers et Russo One, sous licence SIL Open Font License (voir `fonts/`).
