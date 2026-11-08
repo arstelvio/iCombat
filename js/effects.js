@@ -130,6 +130,10 @@
     FX.texts.push(t);
     if (FX.texts.length > 40) FX.texts.shift();
   };
+  // Onomatopée de bande dessinée (« BAM ! ») dans une étoile qui éclate
+  FX.comic = function (x, y, str, color) {
+    FX.text(x, y, str, color || '#ffe14a', 46, 36, { comic: true, rot: (Math.random() - 0.5) * 0.5, vy: -0.5 });
+  };
   FX.flashScreen = null;
 
   FX.update = function () {
@@ -275,6 +279,32 @@
     ctx.globalCompositeOperation = 'source-over';
   };
 
+  function drawComic(ctx, t, pop) {
+    const size = Math.round(t.size * (t.life > t.max - 6 ? 0.6 + (t.max - t.life) * 0.08 : 1));
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.rotate(t.rot || 0);
+    ctx.font = size + 'px Bangers, Impact, sans-serif';
+    const w = ctx.measureText(t.str).width;
+    const rx = Math.max(size * 1.05, w * 0.72), ry = size * 0.95;
+    ctx.beginPath();
+    for (let k = 0; k < 22; k++) {
+      const a = (k / 22) * Math.PI * 2;
+      const r = k % 2 ? 0.66 : 1.0;
+      const px = Math.cos(a) * rx * r, py = Math.sin(a) * ry * r;
+      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#120818'; ctx.lineWidth = 4;
+    ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 7; ctx.strokeStyle = '#120818';
+    ctx.strokeText(t.str, 0, 2);
+    ctx.fillStyle = t.color;
+    ctx.fillText(t.str, 0, 2);
+    ctx.restore();
+  }
+
   FX.drawTexts = function (ctx) {
     const ts = FX.texts;
     ctx.textAlign = 'center';
@@ -284,6 +314,7 @@
       const k = t.life / t.max;
       const pop = t.life > t.max - 6 ? 1 + (t.life - (t.max - 6)) * 0.08 : 1;
       ctx.globalAlpha = Math.min(1, k * 3);
+      if (t.comic) { drawComic(ctx, t, pop); continue; }
       ctx.font = Math.round(t.size * pop) + 'px Bangers, Impact, sans-serif';
       ctx.lineWidth = 5; ctx.strokeStyle = '#120818';
       ctx.strokeText(t.str, t.x, t.y);

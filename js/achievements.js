@@ -24,7 +24,11 @@
     { id: 'polyvalent', name: 'Touche-à-tout', desc: 'Gagner avec 10 combattants différents.', reward: 300, progress: (s) => [Object.keys(s.stats.byChar).filter((k) => s.stats.byChar[k].wins > 0).length, 10] },
     { id: 'centurion', name: 'Centurion', desc: 'Remporter 100 combats.', reward: 500, progress: (s) => [s.stats.wins, 100] },
     { id: 'costume', name: 'Garde-robe', desc: 'Acheter un costume dans la boutique.', reward: 60 },
-    { id: 'assidu', name: 'Assidu', desc: 'Terminer 5 séances d\'entraînement.', reward: 60, progress: (s) => [s.stats.trainings || 0, 5] }
+    { id: 'assidu', name: 'Assidu', desc: 'Terminer 5 séances d\'entraînement.', reward: 60, progress: (s) => [s.stats.trainings || 0, 5] },
+    { id: 'heros', name: 'Un héros est né', desc: 'Créer son propre héros.', reward: 100 },
+    { id: 'ecole', name: 'Diplômé', desc: 'Terminer l\'École du Maître.', reward: 100 },
+    { id: 'aura_max', name: 'Puissance maximale', desc: 'Charger son aura jusqu\'à 3 barres.', reward: 80 },
+    { id: 'eveil_heros', name: 'Jamais abandonner', desc: 'Gagner un combat après l\'Éveil du héros.', reward: 120 }
   ];
 
   const byId = {};

@@ -8,6 +8,15 @@ pas de limite de 7 jours.
 
 **https://arstelvio.github.io/iCombat/**
 
+## 🌟 Nouveautés pour les jeunes héros
+
+- **🦸 Mon héros** : crée ton combattant (pouvoir Ki, Magie, Ninja ou Lame, coiffure, couleurs, aura) et invente le nom de ton attaque ultime.
+- **🎓 École du Maître** : Maître Shen t'apprend à jouer, leçon par leçon, à voix haute.
+- **⚡ Charge ton aura** en maintenant ULTRA, jusqu'à 3 barres, puis lance ton Ultime.
+- **🔥 Éveil du héros** : presque K.O., ton héros se relève plus fort, une fois par manche.
+- **🗣️ Voix** : histoire lue à voix haute, attaques criées. **💥 BAM ! POW !** sur les gros coups.
+- **⭐ Coup de pouce** après une défaite, **coups spéciaux faciles**, **niveaux et titres**.
+
 ## 📲 Mettre le jeu sur l'écran d'accueil de l'iPhone
 
 1. Ouvrez le lien ci-dessus dans **Safari**.
@@ -22,6 +31,7 @@ Le jeu a alors son icône, s'ouvre en plein écran, en paysage, et fonctionne **
 - **Sauvegardes** : celles de l'icône sont séparées de celles de Safari, jouez depuis l'icône.
   Supprimer l'icône efface ses sauvegardes.
 - **Pas de son ?** Désactivez le mode silencieux de l'iPhone.
+- **Pas de voix ?** Vérifiez l'option *Voix* dans les réglages du jeu et le volume de l'iPhone.
 - **L'écran reste en portrait ?** Ouvrez le Centre de contrôle et désactivez le verrouillage de la rotation.
 - **Mises à jour** : quand une nouvelle version est en ligne, le jeu la télécharge tout seul (avec Internet)
   et l'applique la prochaine fois que vous revenez sur l'écran titre.

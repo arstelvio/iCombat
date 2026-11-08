@@ -23,6 +23,7 @@
       const S = C.Store.settings;
       this.ctx = ctx;
       ctx.transformed = false;
+      ctx.heroAwoke = false;
       const p2human = !!ctx.p2.human;
       C.Input.twoPlayers = p2human;
       let p2ctrl;
@@ -32,9 +33,10 @@
       const diff = ctx.difficulty == null ? 1 : ctx.difficulty;
       const cfg = {
         mode: p2human ? 'versus2p' : ctx.mode,
-        p1: { char: ctx.p1.char, costume: ctx.p1.costume || 0, controller: C.Input.p1 },
+        p1: { char: ctx.p1.char, costume: ctx.p1.costume || 0, controller: C.Input.p1, easy: S.easySpecials !== false,
+          hpMul: ctx.boost ? 1.4 : 1, dmgMul: ctx.boost ? 1.15 : 1 },
         p2: {
-          char: ctx.p2.char, costume: ctx.p2.costume || 0, controller: p2ctrl, shadow: !!ctx.p2.shadow,
+          char: ctx.p2.char, costume: ctx.p2.costume || 0, controller: p2ctrl, shadow: !!ctx.p2.shadow, easy: p2human && S.easySpecials !== false,
           hpMul: ctx.p2.hpMul || 1, dmgMul: p2human ? 1 : DIFF_DMG[diff] * (ctx.p2.dmgMul || 1)
         },
         stage: ctx.stage,
@@ -49,8 +51,10 @@
       if (cfg.time === 0) cfg.time = Infinity;
       this.battle = new C.Battle(cfg);
       if (cfg.time === Infinity) this.battle.clock = Infinity;
+      if (C.School) { if (ctx.school) C.School.attach(this.battle); else if (C.School.active) C.School.detach(); }
       if (ctx.p1.hpFrac != null) { const f = this.battle.f[0]; f.hp = f.dispHp = f.redHp = Math.max(1, Math.round(f.maxHp * ctx.p1.hpFrac)); }
       if (ctx.p1.meter) this.battle.f[0].meter = ctx.p1.meter;
+      if (ctx.boost) { this.battle.f[0].meter = Math.max(this.battle.f[0].meter, 100); }
       if (cfg.training) this.battle.parryWindow = 8;
       if (diff === 0) this.battle.parryWindow = 8;
       C.inBattle = true;
@@ -60,15 +64,19 @@
       const st = C.Stages.get(ctx.stage);
       C.Audio.music(ctx.music || st.music || U.choice(C.Audio.battleSongs));
       this.trainingStart = performance.now();
+      if (ctx.boost) C.UI.toast('⭐ Coup de pouce !', '+40 % de vie, coups plus forts et 1 barre d\'ULTRA dès le départ');
     },
 
     tick() {
       const b = this.battle;
       if (!b) return;
+      if (C.School && C.School.active) C.School.update(b);
       if (b.f[0].awakened > 0) this.ctx.transformed = true;
       if (b.events.length) {
         for (const e of b.events) {
           if (e.type === 'guardcrush' && e.side === 0 && C.Store.current) C.Store.current.stats.guardCrushes++;
+          if (e.type === 'charge' && e.side === 0 && e.bar >= 3 && C.Store.current) C.Achievements.grant('aura_max');
+          if (e.type === 'awaken' && e.side === 0) this.ctx.heroAwoke = true;
         }
         b.events.length = 0;
       }
@@ -92,14 +100,17 @@
     },
     // Quitte le combat terminé sans changer d'écran (ex. : retour à la sélection)
     leave() {
+      if (C.School && C.School.active) C.School.detach();
       this.battle = null;
       C.inBattle = false;
       C.Input.touch.visible = false;
     },
     quit(toScreen) {
-      if (this.ctx && this.ctx.mode === 'training' && C.Store.current) {
+      if (C.School && C.School.active) C.School.detach();
+      if (this.ctx && this.ctx.mode === 'training' && !this.ctx.school && C.Store.current) {
         const s = C.Store.current.stats;
         s.trainings = (s.trainings || 0) + 1;
+        C.Store.addXp(15);
         C.Achievements.checkStats();
         C.Store.save();
       }
@@ -156,18 +167,24 @@
         rewards.orbs = 20;
       }
       C.Store.addOrbs(rewards.orbs);
+      // Expérience : on progresse même en perdant
+      let xp = ctx.p2.human ? 25 : (won ? 50 + 15 * (ctx.difficulty || 0) : 20);
+      xp += r.perfectRounds * 15 + (ctx.heroAwoke ? 10 : 0);
+      const lv = C.Store.addXp(xp);
+      rewards.xp = lv.xp; rewards.levels = lv.levels;
       C.Achievements.afterFight({ result: r, difficulty: ctx.p2.human ? 0 : ctx.difficulty, transformed: ctx.transformed });
+      if (won && ctx.heroAwoke) C.Achievements.grant('eveil_heros');
       rewards.achievements = Object.keys(save.achievements).slice(before);
       C.Store.save();
       return rewards;
     },
 
     // ------------------------------------------------------------------ Histoire
-    startChapter(ch) {
+    startChapter(ch, boost) {
       const save = C.Store.current;
       const diff = save.story.difficulty;
       const ctx = {
-        mode: 'story', chapter: ch.id,
+        mode: 'story', chapter: ch.id, boost: !!boost,
         p1: { char: ch.hero, costume: 0 },
         p2: { char: ch.foe, costume: 0, shadow: !!ch.foeShadow, hpMul: ch.boss ? [1.2, 1.4, 1.55, 1.7][diff] : 1 },
         stage: ch.stage, difficulty: diff, rounds: 2, time: 99,
@@ -192,6 +209,7 @@
       C.Store.addOrbs(orbs);
       rewards.orbs += orbs;
       rewards.stars = stars; rewards.first = first;
+      if (first) { const lv = C.Store.addXp(60); rewards.xp = (rewards.xp || 0) + lv.xp; rewards.levels = (rewards.levels || []).concat(lv.levels); }
       if (ch.unlock && C.Store.unlockChar(ch.unlock)) rewards.unlocks.push(ch.unlock);
       if (ch.unlockStage && C.Store.unlockStage(ch.unlockStage)) rewards.stages.push(ch.unlockStage);
       if (C.Store.unlockStage(ch.stage)) rewards.stages.push(ch.stage);
@@ -217,7 +235,7 @@
     arcadeFight(A) {
       const last = A.idx === A.opps.length - 1;
       this.start({
-        mode: 'arcade', arcade: A,
+        mode: 'arcade', arcade: A, boost: !!A.boostNext,
         p1: { char: A.char, costume: A.costume },
         p2: { char: A.opps[A.idx], costume: U.randi(0, 2), hpMul: last ? 1.3 : 1 },
         stage: A.stages[A.idx],
@@ -227,6 +245,7 @@
     },
     arcadeEnd(ctx, r, rewards) {
       const A = ctx.arcade;
+      A.boostNext = false;
       if (r.winner === 0) {
         const pts = Math.round(1000 + r.lastHp * 2000 + r.stats.maxCombo * 100 + r.perfectRounds * 1500) * (1 + A.diff * 0.5);
         A.score += Math.round(pts);

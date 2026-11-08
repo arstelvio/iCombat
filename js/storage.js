@@ -38,6 +38,8 @@
     time: 99,             // 60 | 99 | 0 (infini)
     defaultDifficulty: 1, // 0..3
     showInputs: false,
+    voice: true,          // histoire lue à voix haute, attaques criées
+    easySpecials: true,   // SPÉCIAL seul choisit la technique ; Léger ×4 finit en technique spéciale
     autoBlockHint: true,
     language: 'fr'
   };
@@ -54,6 +56,7 @@
       updated: now,
       playTime: 0,
       orbs: 300,
+      xp: 0,
       unlocked: STARTERS.slice(),
       costumes: {},
       stages: START_STAGES.slice(),
@@ -77,6 +80,15 @@
     if (!d.story.done) d.story.done = {};
     return d;
   }
+
+  // Niveaux du joueur : chaque combat rapporte de l'expérience ; des titres récompensent la progression
+  const TITLES = [
+    [1, 'Apprenti'], [3, 'Élève du Dojo'], [5, 'Disciple de l\'Aura'], [8, 'Guerrier Lumineux'], [12, 'Mage de Combat'],
+    [16, 'Héros Légendaire'], [20, 'Maître des Mondes'], [30, 'Légende Vivante']
+  ];
+  const xpFor = (lv) => 50 * lv * (lv - 1); // XP totale pour atteindre ce niveau : 0, 100, 300, 600, 1000…
+  function levelOf(xp) { let lv = 1; while (xp >= xpFor(lv + 1)) lv++; return lv; }
+  function titleOf(lv) { let t = TITLES[0][1]; for (const [l, n] of TITLES) if (lv >= l) t = n; return t; }
 
   const Store = {
     SLOT_COUNT,
@@ -122,6 +134,7 @@
     useSlot(i) {
       this.currentIndex = i;
       this.current = this.slots[i];
+      if (C.Roster) C.Roster.setHero(this.current && this.current.hero);
       backend.set('lastSlot', String(i));
       this.sessionStart = performance.now();
     },
@@ -134,7 +147,7 @@
     deleteSlot(i) {
       backend.remove('slot' + i);
       this.slots[i] = null;
-      if (this.currentIndex === i) { this.current = null; this.currentIndex = -1; }
+      if (this.currentIndex === i) { this.current = null; this.currentIndex = -1; if (C.Roster) C.Roster.setHero(null); }
     },
     // Sauvegarde automatique de la partie courante (avec cumul du temps de jeu)
     save() {
@@ -148,7 +161,18 @@
     },
 
     // Aides de progression
-    isUnlocked(charId) { return !!this.current && this.current.unlocked.indexOf(charId) >= 0; },
+    isUnlocked(charId) {
+      if (charId === 'hero') return !!(this.current && this.current.hero);
+      return !!this.current && this.current.unlocked.indexOf(charId) >= 0;
+    },
+    // « Crée ton héros »
+    saveHero(data) {
+      if (!this.current) return null;
+      this.current.hero = data;
+      const ch = C.Roster.setHero(data);
+      this.save();
+      return ch;
+    },
     unlockChar(charId) {
       if (!this.current || this.isUnlocked(charId)) return false;
       this.current.unlocked.push(charId);
@@ -169,6 +193,38 @@
       if (c.indexOf(idx) < 0) c.push(idx);
     },
     addOrbs(n) { if (this.current) this.current.orbs = Math.max(0, this.current.orbs + Math.round(n)); },
+    TITLES,
+    levelInfo(d) {
+      d = d || this.current;
+      const xp = (d && d.xp) || 0;
+      const level = levelOf(xp);
+      const a = xpFor(level), b = xpFor(level + 1);
+      return { xp, level, title: titleOf(level), into: xp - a, need: b - a, frac: (xp - a) / (b - a) };
+    },
+    // Ajoute de l'expérience ; à chaque nouveau niveau : orbes en cadeau et parfois un nouveau titre
+    addXp(n) {
+      const d = this.current;
+      if (!d || !(n > 0)) return { xp: 0, levels: [] };
+      const before = levelOf(d.xp || 0);
+      d.xp = (d.xp || 0) + Math.round(n);
+      const after = levelOf(d.xp);
+      const levels = [];
+      for (let lv = before + 1; lv <= after; lv++) {
+        const orbs = 50 + lv * 10;
+        this.addOrbs(orbs);
+        const t = TITLES.find((x) => x[0] === lv);
+        levels.push({ level: lv, orbs, title: t ? t[1] : null });
+      }
+      if (levels.length) {
+        const last = levels[levels.length - 1];
+        const orbs = levels.reduce((s, l) => s + l.orbs, 0);
+        const title = levels.map((l) => l.title).filter(Boolean).pop();
+        if (C.UI && C.UI.toast) C.UI.toast('⭐ NIVEAU ' + last.level + ' !', (title ? 'Nouveau titre : ' + title + ' · ' : '') + '+' + orbs + ' orbes');
+        if (C.Audio) C.Audio.play('unlock');
+        if (C.Voice) C.Voice.say('Niveau ' + last.level + ' !' + (title ? ' Tu deviens ' + title + ' !' : ''), { who: 'announcer' });
+      }
+      return { xp: Math.round(n), levels };
+    },
     progressPercent(d) {
       d = d || this.current;
       if (!d) return 0;

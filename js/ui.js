@@ -16,7 +16,10 @@
     'Après un Lanceur (↑ + Lourd), sautez pour poursuivre le combo en l\'air.',
     'Kaïro et Zarkan peuvent se transformer grâce à l\'Éveil Doré (ULTRA avec 1 barre).',
     'Terminez les chapitres du mode Histoire pour débloquer de nouveaux combattants.',
-    'Gagnez des orbes ◆ pour acheter costumes, arènes et combattants dans la Boutique.'
+    'Gagnez des orbes ◆ pour acheter costumes, arènes et combattants dans la Boutique.',
+    'Maintenez ULTRA pour CHARGER votre aura : la jauge se remplit, jusqu\'à 3 barres !',
+    'Presque K.O. ? Votre héros se RÉVEILLE : plus fort, un peu de vie et une barre d\'ULTRA en cadeau !',
+    'Touchez ULTRA d\'un coup sec pour lancer votre Super, ou votre Ultime avec 3 barres.'
   ];
 
   // ------------------------------------------------------------------ DOM
@@ -48,12 +51,42 @@
   const imgCache = {};
   function portraitImg(id, costume, size, opts) {
     opts = opts || {};
-    const key = id + '|' + (costume || 0) + '|' + size + '|' + JSON.stringify(opts);
+    const ch = C.Roster.get(id);
+    const key = id + '|' + ((ch && ch.rev) || 0) + '|' + (costume || 0) + '|' + size + '|' + JSON.stringify(opts);
     if (!imgCache[key]) {
       const look = C.Roster.look(id, costume || 0, opts.shadow);
       imgCache[key] = C.Rig.portrait(look, size, opts).toDataURL();
     }
     return h('img.portrait', { src: imgCache[key], draggable: 'false', alt: '' });
+  }
+  // Portrait d'un personnage de sauvegarde (le héros d'une autre partie a sa propre apparence)
+  function slotPortrait(d, size) {
+    if (d.lastChar !== 'hero') return portraitImg(d.lastChar && C.Roster.get(d.lastChar) ? d.lastChar : 'kairo', 0, size);
+    if (!d.hero) return portraitImg('kairo', 0, size);
+    const key = 'slot|' + JSON.stringify(d.hero) + '|' + size;
+    if (!imgCache[key]) {
+      const look = C.Roster.heroLook(Object.assign({}, C.Roster.HERO_DEFAULT, d.hero));
+      look.id = key;
+      imgCache[key] = C.Rig.portrait(look, size, {}).toDataURL();
+    }
+    return h('img.portrait', { src: imgCache[key], draggable: 'false', alt: '' });
+  }
+  // Niveau du joueur : badge, titre et barre d'expérience
+  function levelBadge(d) {
+    const L = C.Store.levelInfo(d);
+    return h('div.lvl', null,
+      h('span.lvl-num', null, 'Niv. ' + L.level),
+      h('span.lvl-title', null, L.title),
+      h('span.lvl-bar', null, h('span.lvl-fill', { style: { width: Math.round(L.frac * 100) + '%' } })));
+  }
+  // Gains d'expérience affichés en fin de combat
+  function xpLine(rw) {
+    if (!rw || !rw.xp) return null;
+    const ups = rw.levels || [];
+    const last = ups[ups.length - 1];
+    const title = ups.map((l) => l.title).filter(Boolean).pop();
+    return h('div.reward.xp', null, '⭐ +', rw.xp, ' XP',
+      last ? h('span.lvl-up', null, ' · NIVEAU ' + last.level + ' !' + (title ? ' « ' + title + ' »' : '')) : null);
   }
   const thumbCache = {};
   function stageThumb(id, w, hgt) {
@@ -257,7 +290,7 @@
           h('div.logo-sub', null, 'Le tournoi des mondes')),
         h('div.press.blink', null, C.touchDevice ? 'Touchez l\'écran pour commencer' : 'Appuyez sur une touche pour commencer'),
         C.Pwa && C.Pwa.iosBrowser ? h('div.install-tip', null, '📲 Plein écran et hors ligne : Partager → « Sur l\'écran d\'accueil »') : null,
-        h('div.footer', null, 'v1.0 · 17 combattants · 10 arènes · Créations originales'));
+        h('div.footer', null, 'v1.2 · 17 combattants + ton héros · 10 arènes · Créations originales'));
       return el;
     },
     onAny() { C.Audio.init(); C.Audio.music('menu'); UI.go('slots', {}, { reset: true }); },
@@ -276,8 +309,9 @@
           cards.push(h('div.slot', null,
             h('div.slot-head', null, h('span.slot-num', null, 'PARTIE ' + (i + 1)), h('span.slot-pct', null, C.Store.progressPercent(d) + ' %')),
             h('div.slot-name', null, d.name),
-            h('div.slot-row', null, portraitImg(d.lastChar || 'kairo', 0, 96)),
+            h('div.slot-row', null, slotPortrait(d, 96)),
             h('div.slot-info', null,
+              h('div', null, '⭐ Niv. ', C.Store.levelInfo(d).level, ' · ', C.Store.levelInfo(d).title),
               h('div', null, '◆ ', d.orbs, ' orbes'),
               h('div', null, '👤 ', d.unlocked.length, ' / ', C.Roster.list.length, ' combattants'),
               h('div', null, '★ ', stars, ' / ', C.Story.chapters.length * 3, ' étoiles'),
@@ -305,7 +339,7 @@
         C.Store.createSlot(i, name);
         C.Store.useSlot(i);
         UI.go('main', {}, { reset: true });
-        UI.toast('Bienvenue, ' + name + ' !', 'Commencez par le mode Histoire pour débloquer des combattants.');
+        UI.toast('Bienvenue, ' + name + ' !', 'Commence par l\'ÉCOLE pour apprendre à combattre, puis crée ton héros !');
       } }]);
     setTimeout(() => { input.focus(); input.select(); }, 60);
   }
@@ -320,12 +354,14 @@
       return h('div', null,
         h('div.topbar', null,
           h('button.btn.small.nav', { type: 'button', onclick: () => { C.Audio.play('back'); C.Store.save(); UI.go('slots', {}, { reset: true }); } }, '⇄ Partie'),
-          h('div.tb-title', null, h('span.player', null, d.name)),
+          h('div.tb-title', null, h('span.player', null, d.name), levelBadge(d)),
           h('div.tb-right', null, orbs())),
         h('div.logo.small', null, h('div.logo-top', null, 'CHOC DES'), h('div.logo-main', null, 'LEGENDES')),
         h('div.tiles', null,
           tile('📖', 'HISTOIRE', 'Chapitre ' + Math.min(ch + 1, C.Story.chapters.length) + ' / ' + C.Story.chapters.length, () => UI.go('story'), 'primary big'),
           tile('⚔️', 'COMBAT', '1 joueur ou 2 joueurs', () => UI.go('select', { mode: 'versus', step: 1 }), 'big'),
+          tile('🦸', 'MON HÉROS', d.hero ? d.hero.name : 'Crée ton héros !', () => UI.go('hero'), 'hero'),
+          tile('🎓', 'ÉCOLE', 'Apprends à combattre', () => C.Game.startSchool && C.Game.startSchool(), 'school'),
           tile('🏆', 'ARCADE', '8 combats jusqu\'au boss', () => UI.go('select', { mode: 'arcade', step: 1 })),
           tile('🔥', 'SURVIE', 'Record : ' + d.survival.best + ' victoires', () => UI.go('select', { mode: 'survival', step: 1 })),
           tile('🥋', 'ENTRAÎNEMENT', 'Combos et techniques', () => UI.go('select', { mode: 'training', step: 1 }))),
@@ -337,6 +373,93 @@
           btn('⚙️ Options', () => UI.go('options'))));
     },
     onBack() { C.Store.save(); UI.go('slots', {}, { reset: true }); }
+  };
+
+  // ------------------------------------------------------------------ Crée ton héros
+  const HERO_SW = {
+    hair: ['#161616', '#5a3418', '#c98a3a', '#f2d16b', '#e8e8ee', '#d6382a', '#2e6fd8', '#2fa84f', '#8e44d6', '#ff6fb5'],
+    skin: ['#f6d7b8', '#f2c69b', '#d9a274', '#b07a4f', '#7a4e2d'],
+    outfit: ['#d63a2a', '#ff8a1a', '#f2b705', '#2fa84f', '#2e6fd8', '#1f2a44', '#7b3fb0', '#ff4fd8', '#f2f2f2', '#22222e'],
+    aura: ['#5fd3ff', '#ffd84a', '#ff4040', '#7dff8a', '#b86cff', '#ff4fd8', '#ffffff', '#ff8a1a']
+  };
+  const HAIR_OPTS = [{ value: 'spiky', label: 'En pics' }, { value: 'flame', label: 'Flammes' }, { value: 'messy', label: 'Ébouriffés' },
+    { value: 'cap', label: 'Courts' }, { value: 'topknot', label: 'Chignon' }, { value: 'bald', label: 'Sans' }];
+  const EXTRA_OPTS = [{ value: 'none', label: 'Rien' }, { value: 'glasses', label: 'Lunettes' }, { value: 'hat', label: 'Chapeau magique' }];
+  const ULT_A = ['Rayon', 'Tempête', 'Explosion', 'Poing', 'Vague', 'Comète', 'Lame', 'Tornade', 'Éclair', 'Météore', 'Souffle', 'Choc'];
+  const ULT_B = ['du Dragon', 'des Étoiles', 'du Tonnerre', 'du Phénix', 'de la Galaxie', 'Arc-en-ciel', 'du Soleil', 'de Cristal', 'des Ombres', 'du Volcan', 'du Loup', 'Céleste'];
+  function swatches(list, value, onchange) {
+    const wrap = h('div.swatches');
+    list.forEach((col) => {
+      const b = h('button.sw.nav' + (col === value ? '.on' : ''), { type: 'button', style: { background: col }, 'aria-label': col, onclick: () => {
+        C.Audio.play('select');
+        wrap.querySelectorAll('.sw').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        onchange(col);
+      } });
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+  SC.hero = {
+    music: 'select',
+    render() {
+      const d = S();
+      const isNew = !d.hero;
+      const hd = Object.assign({}, C.Roster.HERO_DEFAULT, { name: (d.name || 'Héros').slice(0, 12) }, d.hero || {});
+      let awake = false;
+      const cv = preview(C.Roster.heroLook(hd), rem(12), rem(13.5));
+      const titleEl = h('div.sel-title');
+      const refresh = () => {
+        const p = cv._p;
+        p.look = C.Roster.heroLook(hd);
+        p.opts.awakened = awake;
+        titleEl.textContent = C.Roster.HERO_POWERS[hd.power].title;
+      };
+      const nameIn = h('input.name-input.hero-name', { type: 'text', maxlength: '12', value: hd.name, autocomplete: 'off', 'aria-label': 'Nom du héros',
+        oninput: (e) => { hd.name = e.target.value; } });
+      const ultIn = h('input.name-input.hero-ult', { type: 'text', maxlength: '24', value: hd.ult, autocomplete: 'off', 'aria-label': 'Nom de l\'attaque ultime',
+        oninput: (e) => { hd.ult = e.target.value; } });
+      const group = (title, ...kids) => h('div.opt-group', null, h('div.opt-head', null, title), kids);
+      const powers = h('div.powers', null, Object.keys(C.Roster.HERO_POWERS).map((k) => {
+        const P = C.Roster.HERO_POWERS[k];
+        const b = h('button.power.nav' + (k === hd.power ? '.on' : ''), { type: 'button', onclick: () => {
+          C.Audio.play('select');
+          powers.querySelectorAll('.power').forEach((x) => x.classList.remove('on'));
+          b.classList.add('on');
+          hd.power = k; refresh();
+        } }, h('span.power-icon', null, P.icon), h('span.power-name', null, P.label), h('span.power-desc', null, P.desc));
+        return b;
+      }));
+      const set = (key) => (v) => { hd[key] = v; refresh(); };
+      const done = () => {
+        hd.name = (hd.name || '').trim().slice(0, 12) || 'Héros';
+        hd.ult = (hd.ult || '').trim().slice(0, 24) || 'Attaque Légendaire';
+        const data = { name: hd.name, power: hd.power, hair: hd.hair, hairColor: hd.hairColor, skin: hd.skin, outfit: hd.outfit, outfit2: hd.outfit2, aura: hd.aura, extra: hd.extra, ult: hd.ult };
+        C.Store.saveHero(data);
+        C.Achievements.grant('heros');
+        C.Audio.play('unlock');
+        C.Voice.say(hd.ult + ' !', { who: 'hero', shout: true });
+        UI.toast(isNew ? hd.name + ' est né !' : hd.name + ' est prêt !', 'Choisis-le dans COMBAT, ARCADE, SURVIE ou ENTRAÎNEMENT.');
+        UI.go('main', {}, { reset: true });
+      };
+      setTimeout(refresh, 0);
+      return h('div', null,
+        topbar(isNew ? '🦸 Crée ton héros' : '🦸 Mon héros', () => UI.back()),
+        h('div.sel-body.hero-body', null,
+          h('div.sel-left', null, cv, titleEl, nameIn,
+            h('div.hero-left-btns', null,
+              btn('✨ Éveil', () => { awake = !awake; refresh(); if (awake) { C.Audio.play('transform'); C.Voice.say('Mon pouvoir se réveille !', { who: 'hero', shout: true }); } }, 'small'),
+              btn('✔ C\'est mon héros !', done, 'primary small'))),
+          h('div.options.hero-opts', null,
+            group('⚡ Pouvoir', powers),
+            group('💇 Cheveux', chips(HAIR_OPTS, hd.hair, set('hair'), 'wrap'), swatches(HERO_SW.hair, hd.hairColor, set('hairColor'))),
+            group('🎨 Tenue', swatches(HERO_SW.outfit, hd.outfit, set('outfit')), h('div.opt-note', null, 'Deuxième couleur :'), swatches(HERO_SW.outfit, hd.outfit2, set('outfit2'))),
+            group('🌟 Aura et Éveil', swatches(HERO_SW.aura, hd.aura, set('aura')), h('div.opt-note', null, 'Couleur des attaques, et des cheveux une fois éveillé.')),
+            group('💥 Attaque ultime', ultIn, h('div.hero-left-btns', null,
+              btn('🎲 Au hasard', () => { hd.ult = U.choice(ULT_A) + ' ' + U.choice(ULT_B); ultIn.value = hd.ult; }, 'small'),
+              btn('🔊 Écouter', () => C.Voice.say((hd.ult || '') + ' !', { who: 'hero', shout: true }), 'small'))),
+            group('🙂 Visage', swatches(HERO_SW.skin, hd.skin, set('skin')), chips(EXTRA_OPTS, hd.extra, set('extra'), 'wrap')))));
+    }
   };
 
   // ------------------------------------------------------------------ Histoire
@@ -402,6 +525,7 @@
         left.classList.toggle('dim', !isLeft); right.classList.toggle('dim', !isRight);
         full = line.text; let n = 0;
         textEl.textContent = '';
+        C.Voice.say(full, { who: sp.narrator ? 'narrator' : (sp.ch && sp.ch.voice) || sp.id });
         textEl.classList.toggle('narr', !!sp.narrator);
         clearInterval(typing);
         typing = setInterval(() => {
@@ -414,12 +538,12 @@
         if (typing) { clearInterval(typing); typing = null; textEl.textContent = full; return; }
         idx++;
         C.Audio.play('select');
-        if (idx >= p.lines.length) { clearInterval(typing); p.next(); return; }
+        if (idx >= p.lines.length) { clearInterval(typing); C.Voice.stop(); p.next(); return; }
         show();
       };
       const el = h('div', { onclick: advance, style: { backgroundImage: p.stage ? 'linear-gradient(rgba(8,4,20,0.35), rgba(8,4,20,0.85)), url(' + stageThumb(p.stage, 640, 360) + ')' : null } },
         h('div.dlg-title', null, p.title || ''),
-        h('button.btn.small.skip.nav', { type: 'button', onclick: (e) => { e.stopPropagation(); clearInterval(typing); C.Audio.play('confirm'); p.next(); } }, 'Passer ▶▶'),
+        h('button.btn.small.skip.nav', { type: 'button', onclick: (e) => { e.stopPropagation(); clearInterval(typing); C.Voice.stop(); C.Audio.play('confirm'); p.next(); } }, 'Passer ▶▶'),
         h('div.dlg-stage', null, left, right),
         h('div.dlg-box', null, nameEl, textEl, h('div.dlg-next.blink', null, '▼')));
       setTimeout(show, 50);
@@ -427,7 +551,7 @@
       return el;
     },
     onAny() { SC.dialog._advance && SC.dialog._advance(); },
-    onBack(p) { p.next(); }
+    onBack(p) { C.Voice.stop(); p.next(); }
   };
 
   SC.vs = {
@@ -493,6 +617,17 @@
         bioBox.textContent = ch.bio;
       };
       const grid = h('div.cgrid');
+      // Le héros du joueur en premier (ou une case pour le créer)
+      if (C.Roster.get('hero')) {
+        const hc = C.Roster.get('hero');
+        grid.appendChild(h('button.ctile.nav.hero-tile', { type: 'button', 'data-id': 'hero', onclick: () => {
+          if (selId === 'hero' && C.Input.lastDevice === 'touch') { confirm(); return; }
+          selId = 'hero'; costume = 0; C.Audio.play('select'); update();
+        } }, portraitImg('hero', 0, 96), h('span.ctile-name', null, hc.name)));
+      } else {
+        grid.appendChild(h('button.ctile.nav.hero-tile.create', { type: 'button', onclick: () => UI.go('hero') },
+          h('span.rnd', null, '＋'), h('span.ctile-name', null, 'Ton héros')));
+      }
       C.Roster.list.forEach((ch) => {
         const un = C.Store.isUnlocked(ch.id);
         const t = h('button.ctile.nav' + (un ? '' : '.locked'), { type: 'button', 'data-id': ch.id, onclick: () => {
@@ -582,7 +717,7 @@
         btn('⚙️ Options', () => UI.go('options', { inGame: true }))
       ];
       let extra = null;
-      if (ctx.mode === 'training') {
+      if (ctx.mode === 'training' && !ctx.school) {
         const T = b.training;
         extra = h('div.training-opts', null,
           h('div.opt-line', null, h('span', null, 'Mannequin :'), chips(C.AI.Dummy.MODES.map((m) => ({ label: m.label, value: m.id })), b.f[1].controller.mode, (v) => {
@@ -604,7 +739,7 @@
     render(p) {
       const ch = C.Roster.get(p.char);
       const list = C.Moves.moveList(p.char);
-      const kindLabel = { special: 'Spécial', super: 'Super', ultimate: 'Ultime', normal: 'Normal', grab: 'Projection' };
+      const kindLabel = { special: 'Spécial', super: 'Super', ultimate: 'Ultime', normal: 'Normal', grab: 'Projection', charge: 'Aura' };
       return h('div', null,
         topbar('Liste des coups — ' + ch.name, () => UI.back()),
         h('div.movelist', null,
@@ -638,22 +773,42 @@
             row('Projections', s1.throws, s2.throws),
             row('Supers / Ultimes', s1.supers, s2.supers)),
           rw.orbs ? h('div.reward', null, '◆ +', rw.orbs, ' orbes') : null,
+          xpLine(rw),
           (rw.achievements || []).length ? h('div.reward-ach', null, rw.achievements.map((id) => h('div', null, '🏆 ', C.Achievements.byId[id].name))) : null,
           h('div.res-btns', null,
-            btn('↻ Revanche', () => { C.Game.start(ctx); }, 'primary'),
+            btn('↻ Revanche', () => { ctx.boost = false; C.Game.start(ctx); }, 'primary'),
+            !won && !two && ctx.mode === 'versus' ? btn('⭐ Revanche avec un coup de pouce', () => { ctx.boost = true; C.Game.start(ctx); }) : null,
             btn('👥 Changer de combattants', () => { C.Game.leave(); C.Audio.music('select'); UI.go('select', { mode: ctx.mode === 'versus' ? 'versus' : ctx.mode, step: 1 }, { reset: false }); }),
             btn('🏠 Menu principal', () => C.Game.quit('main')))));
     },
     onBack() { C.Game.quit('main'); }
   };
 
+  SC.schoolDone = {
+    music: 'victory',
+    render(p) {
+      return h('div', null, h('div.center-panel.wide', null,
+        h('div.res-title.win', null, '🎓 DIPLÔMÉ !'),
+        h('p', null, 'Maître Shen est fier de toi ! Tu sais marcher, sauter, enchaîner les coups, te protéger, charger ton aura et lancer tes attaques ULTRA.'),
+        h('div.reward', null, '◆ +', p.orbs, ' orbes'),
+        xpLine({ xp: p.xp, levels: p.levels }),
+        h('div.res-btns', null,
+          btn('📖 Partir à l\'aventure (Histoire)', () => UI.go('story', {}, { reset: true }), 'primary'),
+          S() && !S().hero ? btn('🦸 Créer mon héros', () => UI.go('hero')) : null,
+          btn('🏠 Menu principal', () => UI.go('main', {}, { reset: true })))));
+    },
+    onBack() { UI.go('main', {}, { reset: true }); }
+  };
+
   SC.storyLose = {
     render(p) {
       return h('div', null, h('div.center-panel', null,
         h('div.res-title.lose', null, 'DÉFAITE…'),
-        h('p', null, 'Ne baissez pas les bras ! Vous pouvez aussi baisser la difficulté dans l\'écran de l\'Histoire.'),
+        h('p', null, 'Ne baisse pas les bras ! Un vrai héros se relève toujours.'),
+        h('p.boost-help', null, '⭐ Coup de pouce : +40 % de vie, coups plus forts et 1 barre d\'ULTRA dès le départ.'),
         h('div.res-btns', null,
-          btn('↻ Réessayer', () => C.Game.startChapter(p.ch), 'primary'),
+          btn('⭐ Réessayer avec un coup de pouce', () => C.Game.startChapter(p.ch, true), 'primary'),
+          btn('↻ Réessayer', () => C.Game.startChapter(p.ch)),
           btn('📖 Retour à l\'Histoire', () => C.Game.quit('story')))));
     },
     onBack() { C.Game.quit('story'); }
@@ -671,6 +826,7 @@
         h('div.big-stars', null, stars(p.stars)),
         h('div.star-help', null, '★ Victoire   ★ Aucune manche perdue   ★ Plus de 50 % de vie'),
         h('div.reward', null, '◆ +', rw.orbs, ' orbes'),
+        xpLine(rw),
         h('div.unlocks', null, unlockCards, stageCards),
         (rw.achievements || []).length ? h('div.reward-ach', null, rw.achievements.map((id) => h('div', null, '🏆 ', C.Achievements.byId[id].name))) : null,
         h('div.res-btns', null,
@@ -706,7 +862,8 @@
         h('div.res-title.lose', null, 'CONTINUER ?'), cnt,
         h('p', null, 'Continuer remet votre score à zéro pour ce combat.'),
         h('div.res-btns', null,
-          btn('✔ Oui', () => { clearInterval(timer); A.continues++; A.score = Math.round(A.score * 0.5); C.Game.arcadeFight(A); }, 'primary'),
+          btn('⭐ Oui, avec un coup de pouce', () => { clearInterval(timer); A.continues++; A.score = Math.round(A.score * 0.5); A.boostNext = true; C.Game.arcadeFight(A); }, 'primary'),
+          btn('✔ Oui', () => { clearInterval(timer); A.continues++; A.score = Math.round(A.score * 0.5); C.Game.arcadeFight(A); }),
           btn('✖ Non', end))));
     },
     onBack(p) { UI.go('arcadeEnding', { A: p.A, lost: true }); }
@@ -911,10 +1068,13 @@
           h('div.opt-group', null, h('div.opt-head', null, '🔊 Son'),
             slider('Musique', 'music', 0, 1, 0.05, pct),
             slider('Effets sonores', 'sfx', 0, 1, 0.05, pct),
+            C.Voice.ok ? toggle('Voix (histoire lue, attaques criées)', 'voice') : null,
             C.Pwa && !C.Pwa.canVibrate ? null : toggle('Vibrations', 'vibration')),
           h('div.opt-group', null, h('div.opt-head', null, '🎮 Commandes tactiles'),
             slider('Taille des boutons', 'controlSize', 0.75, 1.3, 0.05, pct),
             slider('Opacité', 'controlOpacity', 0.25, 1, 0.05, pct),
+            toggle('Coups spéciaux faciles', 'easySpecials'),
+            h('div.opt-note', null, 'Coups spéciaux faciles : SPÉCIAL seul choisit la bonne technique selon la distance, et Léger ×4 termine le combo par une technique.'),
             toggle('Mode gaucher', 'leftHanded'),
             h('div.opt-note', null, 'Clavier : ZQSD/WASD + J (Léger) K (Lourd) L (Spécial) I (Garde) U (Saisie) O (Ultra) · Manettes Bluetooth compatibles.')),
           h('div.opt-group', null, h('div.opt-head', null, '⚔️ Combat'),

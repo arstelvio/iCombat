@@ -155,6 +155,7 @@
     if (C.Game.battle && !C.Game.battle.paused && !C.Game.battle.result) C.Game.pause();
     C.Store.save();
     C.Audio.suspend();
+    if (C.Voice) C.Voice.stop();
   };
   C.onAppResume = function () { C.Audio.resume(); };
   document.addEventListener('visibilitychange', () => { if (document.hidden) C.onAppPause(); else C.onAppResume(); });
@@ -172,8 +173,9 @@
     window.addEventListener('orientationchange', () => setTimeout(resize, 200));
     C.Input.attachTouch(canvas);
     document.addEventListener('pointerdown', () => C.Audio.init(), { once: false, passive: true });
-    // iOS (Safari) n'autorise le son qu'à la fin d'un toucher
-    document.addEventListener('touchend', () => C.Audio.init(), { passive: true });
+    // iOS (Safari) n'autorise le son et la voix qu'à la fin d'un toucher
+    document.addEventListener('touchend', () => { C.Audio.init(); C.Voice.unlock(); }, { passive: true });
+    document.addEventListener('click', () => C.Voice.unlock(), { passive: true });
     document.addEventListener('contextmenu', (e) => e.preventDefault());
     newDemo();
     C.UI.go('title', {}, { reset: true });

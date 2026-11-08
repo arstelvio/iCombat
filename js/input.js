@@ -4,6 +4,7 @@
   const U = C.U;
 
   const keys = {};
+  const tapped = {}; // touches enfoncées puis relâchées entre deux images : comptées une fois
   const KEYMAP_P1 = {
     KeyW: 'u', KeyS: 'd', KeyA: 'l', KeyD: 'r',
     KeyJ: 'a', KeyK: 'b', KeyL: 'c', KeyI: 'g', KeyU: 't', KeyO: 's',
@@ -28,12 +29,13 @@
   // ------------------------------------------------------------ clavier
   window.addEventListener('keydown', (e) => {
     if (e.repeat) { if (gameKeys(e.code)) e.preventDefault(); return; }
-    keys[e.code] = true;
+    keys[e.code] = true; tapped[e.code] = true;
     Input.lastDevice = 'keyboard';
     if (gameKeys(e.code) && C.inBattle) e.preventDefault();
     if (C.onKey) C.onKey(e);
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+  const down = (code) => { if (keys[code] || tapped[code]) { tapped[code] = false; return true; } return false; };
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
   function gameKeys(code) { return KEYMAP_P1[code] || ARROWS[code] || KEYMAP_P2[code]; }
 
@@ -153,6 +155,7 @@
   Input.resetTouch = function () {
     const T = Input.touch;
     T.stick = null; T.buttons = {}; T.pointers = {}; T.pending = {};
+    for (const k in tapped) tapped[k] = false;
   };
 
   function touchState() {
@@ -181,8 +184,8 @@
     isCPU: false,
     get() {
       const o = blank();
-      for (const code in KEYMAP_P1) if (keys[code]) o[KEYMAP_P1[code]] = 1;
-      if (!Input.twoPlayers) for (const code in ARROWS) if (keys[code]) o[ARROWS[code]] = 1;
+      for (const code in KEYMAP_P1) if (down(code)) o[KEYMAP_P1[code]] = 1;
+      if (!Input.twoPlayers) for (const code in ARROWS) if (down(code)) o[ARROWS[code]] = 1;
       merge(o, readPad(0));
       merge(o, touchState());
       if (o.l && o.r) { o.l = 0; o.r = 0; }
@@ -234,17 +237,31 @@
       ctx.fillText('DÉPLACEMENT', C.Store.settings.leftHanded ? W - 200 : 200, cy);
       void cx;
     }
+    // Bouton (ou joystick) à utiliser pendant une leçon de l'École du Maître : il pulse
+    const hl = Input.highlight;
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 160);
+    if (hl === 'stick' && !T.stick) {
+      ctx.save(); ctx.globalAlpha = 0.5 + pulse * 0.5; ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 6;
+      const sx = C.Store.settings.leftHanded ? W - 200 : 200;
+      ctx.beginPath(); ctx.arc(sx, H - 150, L.stickR + 8 + pulse * 10, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
     // boutons
     const me = battle && battle.f[0];
     for (const b of L.buttons) {
       const pressed = T.buttons[b.id] > 0;
       let col = COLORS[b.id];
       let ready = true;
-      if (b.id === 's' && me) ready = me.meter >= 100;
+      // Jauge vide : le bouton ULTRA sert à charger l'aura (maintenir)
+      const charge = b.id === 's' && me && me.meter < 100;
+      if (charge) col = '#7fe3ff';
       ctx.globalAlpha = pressed ? Math.min(1, op + 0.35) : op * (ready ? 1 : 0.55);
       ctx.fillStyle = pressed ? U.rgba(col, 0.75) : 'rgba(20,10,40,0.55)';
       ctx.strokeStyle = col; ctx.lineWidth = pressed ? 5 : 3;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      if (hl === b.id) {
+        ctx.save(); ctx.globalAlpha = 0.55 + pulse * 0.45; ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 8 + pulse * 9, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      }
       if (b.id === 's' && me) {
         const frac = me.meter / 300;
         ctx.strokeStyle = me.meter >= 300 ? '#ffd23f' : '#7fe3ff'; ctx.lineWidth = 6;
@@ -253,9 +270,9 @@
       }
       ctx.fillStyle = '#ffffff';
       ctx.font = Math.round(b.r * 0.62) + 'px Bangers, Impact, sans-serif';
-      ctx.fillText(ICON[b.id], b.x, b.y - b.r * 0.12);
+      ctx.fillText(charge ? '⚡' : ICON[b.id], b.x, b.y - b.r * 0.12);
       ctx.font = Math.round(b.r * 0.26) + 'px "Russo One", sans-serif';
-      ctx.fillText(b.label, b.x, b.y + b.r * 0.45);
+      ctx.fillText(charge ? 'CHARGER' : b.label, b.x, b.y + b.r * 0.45);
     }
     // pause
     const p = L.pause;

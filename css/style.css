@@ -128,7 +128,12 @@ img.portrait { display: block; width: 100%; height: auto; pointer-events: none; 
 
 /* ------------------------------------------------------------ menu principal */
 .scr-main .logo { margin: 0.2rem 0 0.4rem; }
-.tiles { display: grid; grid-template-columns: 1.2fr 1.2fr 1fr 1fr 1fr; gap: 0.7rem; width: min(100%, 64rem); margin: 0 auto; flex: 1; max-height: 13rem; }
+.tiles { display: grid; grid-template-columns: 1.25fr 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.55rem; width: min(100%, 64rem); margin: 0 auto; flex: 1; max-height: 14rem; }
+.tiles .tile.primary { grid-row: span 2; }
+.tiles .tile-label { font-size: 1.65rem; }
+.tiles .tile-icon { font-size: 2.1rem; }
+.tiles .tile.primary .tile-label { font-size: 2.3rem; }
+.tiles .tile.primary .tile-icon { font-size: 3rem; }
 .tile {
   position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; text-align: left;
   padding: 0.6rem 0.8rem; border-radius: 0.7rem; cursor: pointer; color: #fff; font-family: inherit;
@@ -139,6 +144,8 @@ img.portrait { display: block; width: 100%; height: auto; pointer-events: none; 
 .tile:active { transform: translateY(0.12rem); }
 .tile.primary { background: linear-gradient(160deg, #ff9a3c, #b71c1c); }
 .tile.big:not(.primary) { background: linear-gradient(160deg, #3f8cff, #1b2a7a); }
+.tile.hero { background: linear-gradient(160deg, #ffd23f, #e0560f); color: #fff; }
+.tile.school { background: linear-gradient(160deg, #2fd06a, #0f6b4a); }
 .tile-icon { position: absolute; top: 0.35rem; right: 0.5rem; font-size: 2.8rem; opacity: 0.95; filter: drop-shadow(0 0.15rem 0 rgba(0, 0, 0, 0.5)); }
 .tile-label { font-family: Bangers, Impact, sans-serif; font-size: 2rem; letter-spacing: 0.05rem; text-shadow: 0 0.15rem 0 #000; }
 .tile-sub { font-size: 0.72rem; opacity: 0.88; }
@@ -212,7 +219,7 @@ canvas.preview { display: block; }
 .costume.on { border-color: var(--gold); box-shadow: 0 0 0.5rem var(--gold); }
 .costume.locked { filter: grayscale(0.7) brightness(0.6); }
 .sel-right { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
-.cgrid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 0.4rem; overflow-y: auto; padding: 0.15rem; }
+.cgrid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.4rem; overflow-y: auto; padding: 0.15rem; }
 .cgrid.gallery { grid-template-columns: repeat(9, 1fr); margin-top: 0.6rem; }
 .ctile { position: relative; aspect-ratio: 1 / 1.15; border-radius: 0.5rem; border: 0.13rem solid rgba(255, 255, 255, 0.18); background: linear-gradient(180deg, rgba(90, 60, 170, 0.6), rgba(20, 10, 50, 0.9)); cursor: pointer; padding: 0; overflow: hidden; color: #fff; font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
 .ctile img { position: absolute; inset: 0 0 1rem 0; width: 100%; height: calc(100% - 1rem); object-fit: cover; }
@@ -244,6 +251,7 @@ canvas.preview { display: block; }
 .res-title.lose { color: #ff6a6a; }
 .res-btns { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; margin-top: 0.5rem; }
 .reward { font-size: 1.2rem; color: var(--cyan); }
+.boost-help { color: var(--gold); font-size: 0.9rem; }
 .reward-ach { font-size: 0.85rem; color: var(--gold); }
 .big-stars { font-size: 3rem; }
 .star-help { font-size: 0.7rem; opacity: 0.75; }
@@ -352,3 +360,45 @@ input[type=range] { flex: 1; accent-color: #ffd23f; min-width: 6rem; }
 .scr-storyReward, .scr-storyLose, .scr-arcadeContinue, .scr-arcadeEnding, .scr-survivalNext, .scr-survivalOver, .scr-ladder, .scr-credits { background: rgba(6, 3, 16, 0.84); }
 .scr-results { background: radial-gradient(circle at 25% 50%, rgba(255, 210, 63, 0.18), rgba(6, 3, 16, 0.92) 60%); }
 .sel-bio { font-size: 0.72rem; opacity: 0.8; line-height: 1.35; background: rgba(10, 5, 25, 0.6); border-radius: 0.5rem; padding: 0.4rem 0.6rem; max-height: 4.5rem; overflow: hidden; }
+
+/* ------------------------------------------------------------ Crée ton héros */
+.ctile.hero-tile { background: linear-gradient(180deg, rgba(255, 190, 40, 0.75), rgba(150, 40, 10, 0.9)); border-color: rgba(255, 220, 120, 0.7); }
+.ctile.hero-tile.create .rnd { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 2.4rem; color: #fff; }
+.hero-body .sel-left { gap: 0.35rem; justify-content: flex-start; }
+.hero-body .sel-left .preview { flex: 1; min-height: 0; }
+.hero-name { width: 90%; font-size: 1rem; padding: 0.3rem 0.5rem; }
+.hero-ult { width: 100%; box-sizing: border-box; font-size: 0.95rem; padding: 0.35rem 0.5rem; }
+.hero-left-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
+.hero-opts { grid-template-columns: 1fr 1fr; }
+.hero-opts .opt-head { font-size: 1.1rem; }
+.powers { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+.power { font-family: inherit; color: #fff; background: rgba(255, 255, 255, 0.07); border: 0.12rem solid var(--line); border-radius: 0.6rem; padding: 0.3rem 0.4rem; cursor: pointer;
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.4rem; text-align: left; align-items: center; }
+.power.on { border-color: var(--gold); background: rgba(255, 210, 63, 0.18); box-shadow: 0 0 0.5rem rgba(255, 210, 63, 0.5); }
+.power-icon { grid-row: span 2; font-size: 1.5rem; }
+.power-name { font-family: Bangers, Impact, sans-serif; font-size: 1.15rem; color: var(--gold); line-height: 1; }
+.power-desc { font-size: 0.58rem; opacity: 0.8; line-height: 1.15; }
+.swatches { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.sw { width: 1.55rem; height: 1.55rem; border-radius: 50%; border: 0.14rem solid rgba(255, 255, 255, 0.35); cursor: pointer; padding: 0; }
+.sw.on { border-color: #fff; box-shadow: 0 0 0 0.14rem var(--gold), 0 0 0.5rem var(--gold); transform: scale(1.12); }
+
+/* ------------------------------------------------------------ Niveaux */
+.lvl { display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 0.7rem; margin-top: 0.1rem; font-family: 'Russo One', sans-serif; letter-spacing: 0; text-shadow: none; }
+.lvl-num { font-family: Bangers, Impact, sans-serif; font-size: 1rem; color: #2a1405; background: linear-gradient(180deg, #ffe066, #f0a114); border-radius: 0.4rem; padding: 0 0.35rem; }
+.lvl-title { color: var(--cyan); white-space: nowrap; }
+.lvl-bar { width: 4.5rem; height: 0.4rem; border-radius: 0.3rem; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.lvl-fill { display: block; height: 100%; background: linear-gradient(90deg, #7fe3ff, #ffd23f); }
+.reward.xp { color: var(--gold); font-size: 1rem; }
+.lvl-up { color: #7dff8a; }
+
+/* ------------------------------------------------------------ École du Maître */
+#lesson { position: fixed; top: calc(max(0.5rem, var(--sat)) + 4.6rem); left: 50%; transform: translateX(-50%); width: min(70vw, 40rem); z-index: 4; pointer-events: none;
+  display: flex; gap: 0.6rem; align-items: center; background: rgba(16, 9, 38, 0.9); border: 0.14rem solid rgba(255, 210, 63, 0.75); border-radius: 0.8rem; padding: 0.45rem 0.8rem; box-sizing: border-box; }
+#lesson.pop { animation: lessonpop 0.35s ease; }
+@keyframes lessonpop { from { transform: translateX(-50%) scale(0.85); opacity: 0.2; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+.lesson-master { font-size: 2.4rem; }
+.lesson-body { flex: 1; min-width: 0; }
+.lesson-head { display: flex; justify-content: space-between; gap: 0.5rem; }
+.lesson-name { font-family: Bangers, Impact, sans-serif; color: var(--gold); font-size: 1.05rem; }
+.lesson-step { font-size: 0.7rem; color: var(--cyan); }
+.lesson-text { font-size: 0.85rem; line-height: 1.3; }

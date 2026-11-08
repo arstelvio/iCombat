@@ -3,6 +3,7 @@
   'use strict';
   const U = C.U, FX = C.FX, Rig = C.Rig, Poses = C.Poses;
   const GRAV = 0.95, MAX_FALL = 22, BUFFER = 8;
+  const ULTRA_HOLD = 12; // ULTRA maintenu plus longtemps : charge de l'aura au lieu du Super
   const BTN = ['a', 'b', 'c', 'g', 's', 't'];
   const EMPTY = { l: 0, r: 0, u: 0, d: 0, a: 0, b: 0, c: 0, g: 0, s: 0, t: 0 };
   const ACTIONABLE = { idle: 1, air: 1, guard: 1 };
@@ -21,6 +22,9 @@
       this.maxHp = Math.round(this.stats.hp * (cfg.hpMul || 1));
       this.dmgMul = cfg.dmgMul || 1;
       this.controller = cfg.controller || null;
+      // Coups spéciaux faciles (joueurs humains) : SPÉCIAL seul choisit la technique selon la situation
+      this.easy = !!(cfg.easy && this.controller && !this.controller.isCPU);
+      this.easyTurn = 0;
       this.name = cfg.shadow ? 'Ombre de ' + this.ch.name : this.ch.name;
       this.moves = C.Moves.build(this);
       this.wins = 0;
@@ -45,6 +49,8 @@
       this.invuln = 0; this.flash = 0;
       this.awakened = 0; this.charging = false;
       this.buf = { a: 0, b: 0, c: 0, g: 0, s: 0, t: 0 };
+      this.sHold = 0; this.sPending = false; this.sCharge = false;
+      this.heroAwake = false;
       this.inp = EMPTY; this.prev = EMPTY;
       this.lastTap = { dir: 0, t: -99 };
       this.frame = 0;
@@ -141,8 +147,24 @@
       const i = this.inp, p = this.prev;
       for (let k = 0; k < BTN.length; k++) {
         const b = BTN[k];
+        if (b === 's') continue;
         if (i[b] && !p[b]) this.buf[b] = BUFFER;
         else if (this.buf[b] > 0) this.buf[b]--;
+      }
+      // ULTRA : appui bref = Super / Ultime ; maintenu = charge de l'aura.
+      // Avec au moins une barre et les mains libres, on attend de savoir s'il s'agit d'un appui bref.
+      if (this.buf.s > 0) this.buf.s--;
+      if (i.s && !p.s) {
+        this.sHold = 1;
+        const free = this.onGround && (this.state === 'idle' || this.state === 'guard' || this.state === 'dash');
+        if (this.meter >= 100 && free && this.meter < 300 && this.moves.CHARGE) this.sPending = true;
+        else this.buf.s = BUFFER;
+      } else if (i.s) {
+        this.sHold++;
+        if (this.sPending && this.sHold >= ULTRA_HOLD) { this.sPending = false; this.sCharge = true; this.buf.s = BUFFER; }
+      } else if (p.s) {
+        if (this.sPending) this.buf.s = BUFFER;
+        this.sPending = false; this.sCharge = false;
       }
       // double-tap pour les ruées
       const fwdNow = this.holdFwd(), backNow = this.holdBack();
@@ -171,22 +193,49 @@
       let id = null, key = null;
       if (b.s) {
         key = 's';
-        if (this.meter >= 300 && !i.d && M.X && (!air || M.X.air)) id = 'X';
+        if (this.sCharge || this.meter < 100) { if (M.CHARGE && i.s && !air && this.meter < 300) id = 'CHARGE'; }
+        else if (this.meter >= 300 && !i.d && M.X && (!air || M.X.air)) id = 'X';
         else if (this.meter >= 100 && M.S && (!air || M.S.air)) id = (M.S.cond && !M.S.cond(this) && M.S2) ? 'S2' : 'S';
       }
       if (!id && b.t) { key = 't'; id = air ? (b.a || b.b ? null : 'AL') : 'GRAB'; }
       if (!id && b.c) {
         key = 'c';
-        id = i.u ? 'U' : i.d ? 'D' : side ? 'F' : 'N';
+        id = i.u ? 'U' : i.d ? 'D' : side ? 'F' : (this.easy ? this.autoSpecial() : 'N');
         if (air && M['A' + id]) id = 'A' + id;
         else if (air && M[id] && !M[id].air) id = null;
         else if (!air && M[id] && M[id].air === 'only') id = null;
       }
       if (!id && b.b) { key = 'b'; id = air ? 'AH' : i.u ? 'UH' : i.d ? 'DH' : (this.holdFwd() && M.FH ? 'FH' : 'H'); }
-      if (!id && b.a) { key = 'a'; id = air ? 'AL' : i.d ? 'DL' : 'L1'; }
+      if (!id && b.a) {
+        key = 'a'; id = air ? 'AL' : i.d ? 'DL' : 'L1';
+        // Léger → Léger → Léger : chaque appui pendant le coup enchaîne le suivant
+        // (coups spéciaux faciles : un 4e appui termine par une technique spéciale)
+        if (id === 'L1' && this.state === 'move' && this.move) {
+          const cur = this.move.id;
+          if (cur === 'L1' && M.L2) id = 'L2';
+          else if (cur === 'L2' && M.L3) id = 'L3';
+          else if (cur === 'L3' && this.easy) id = this.autoSpecial() || 'L1';
+        }
+      }
       if (!id || !M[id]) return null;
       if (!peek) b[key] = 0;
       return id;
+    }
+
+    // Technique choisie automatiquement (mode « coups spéciaux faciles »)
+    autoSpecial() {
+      const M = this.moves, o = this.opp, air = !this.onGround;
+      const dist = o ? Math.abs(o.x - this.x) : 400;
+      // Seulement des techniques offensives (pas de bouclier, de contre ni de concentration)
+      const ok = (k) => M[k] && (air ? M[k].air : M[k].air !== 'only') && !M[k].reflect && !M[k].counter &&
+        !(M[k].ai && M[k].ai.role === 'charge');
+      let pick;
+      if (o && !o.onGround && dist < 240) pick = ['U', 'N'];
+      else if (dist > 380) pick = ['N', 'F'];
+      else if (dist > 170) pick = ['F', 'N'];
+      else pick = (this.easyTurn++ % 2) ? ['U', 'F'] : ['F', 'U'];
+      for (const k of pick) if (ok(k)) return k;
+      return ok('N') ? 'N' : null;
     }
 
     // ------------------------------------------------------------ mise à jour

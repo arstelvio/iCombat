@@ -281,7 +281,7 @@
     if (lookCache[key]) return lookCache[key];
     const ch = byId[id];
     const L = U.deepClone(ch.look);
-    L.id = key;
+    L.id = key + (ch.rev ? '@' + ch.rev : '');
     const pal = ch.palettes[costume] || {};
     for (const k in pal) {
       if (k.indexOf('.') > 0) setPath(L, k, pal[k]);
@@ -297,11 +297,66 @@
   const byId = {};
   CHARS.forEach((c, i) => { byId[c.id] = c; c.index = i; });
 
+  // ---------------------------------------------------------------- « Crée ton héros »
+  // Le héros du joueur reprend les coups et les statistiques d'un combattant modèle selon son pouvoir.
+  const HERO_POWERS = {
+    ki: { base: 'kairo', title: 'Guerrier du Ki', icon: '🔥', label: 'Ki', desc: 'Boules d\'énergie, ruées, rayon géant' },
+    mage: { base: 'leo', title: 'Apprenti Mage', icon: '🪄', label: 'Magie', desc: 'Baguette, sortilèges, pluie d\'étoiles' },
+    ninja: { base: 'kage', title: 'Ninja de l\'Ombre', icon: '🥷', label: 'Ninja', desc: 'Shurikens, téléportation, vitesse' },
+    lame: { base: 'takeda', title: 'Lame Légendaire', icon: '⚔️', label: 'Lame', desc: 'Katana, dégainé éclair, grande portée' }
+  };
+  const HERO_DEFAULT = { name: 'Héros', power: 'ki', hair: 'spiky', hairColor: '#161616', skin: '#f2c69b', outfit: '#2e6fd8', outfit2: '#f2b705', aura: '#5fd3ff', extra: 'none', ult: 'Rayon du Dragon' };
+  let heroRev = 0;
+
+  function heroLook(h) {
+    const boots = U.shade(h.outfit2, -0.35);
+    const c = { skin: h.skin, hair: h.hairColor, eye: '#161616', top: h.outfit, inner: h.outfit2, bottom: h.outfit, belt: h.outfit2, boots, gloves: null };
+    const L = { build: 'normal', head: 'human', hair: h.hair, awaken: true, awakenHair: U.shade(h.aura, 0.45), colors: c };
+    if (h.extra === 'glasses') L.glasses = true;
+    if (h.extra === 'hat') { L.hat = 'wizard'; c.hat = h.outfit; }
+    if (h.power === 'mage') {
+      Object.assign(L, { build: 'slim', chest: 'robe', poseSet: 'wand', robe: { color: h.outfit, trim: h.outfit2 }, scarf: [h.outfit2, U.shade(h.outfit2, -0.25)],
+        weapon: { type: 'wand', len: 30, color: '#6b4423', glow: h.aura } });
+      c.boots = '#2a2030';
+    } else if (h.power === 'ninja') {
+      Object.assign(L, { build: 'slim', chest: 'ninja', scarf: [h.outfit2, U.shade(h.outfit2, -0.25)] });
+      c.mask = h.outfit; c.band = h.outfit2; c.boots = U.shade(h.outfit, -0.4); c.gloves = c.boots;
+    } else if (h.power === 'lame') {
+      Object.assign(L, { chest: 'gi', beltKnot: true, poseSet: 'blade', weapon: { type: 'katana', len: 102, grip: '#1d1d40' } });
+    } else {
+      Object.assign(L, { chest: 'gi', beltKnot: true });
+    }
+    return L;
+  }
+
+  // Crée (ou met à jour) le combattant « hero » d'après les choix du joueur ; null le retire
+  function setHero(data) {
+    if (!data) { delete byId.hero; return null; }
+    const h = Object.assign({}, HERO_DEFAULT, data);
+    const P = HERO_POWERS[h.power] || HERO_POWERS.ki;
+    const base = byId[P.base];
+    const ch = {
+      id: 'hero', name: h.name, short: h.name, title: P.title, world: 'le Village des Héros', custom: true, voice: 'hero',
+      bio: h.name + ' n\'est encore qu\'un ' + P.title.toLowerCase() + ', mais rêve de devenir une légende. Son attaque secrète : « ' + h.ult + ' » !',
+      quotes: { intro: 'Je vais devenir le plus fort !', win: 'Ouais ! Je deviens une vraie légende !', lose: 'Je reviendrai encore plus fort !' },
+      style: base.style, aura: h.aura, awakenAura: h.aura, power: h.power in HERO_POWERS ? h.power : 'ki', ultName: h.ult,
+      stats: Object.assign({}, base.stats), rating: Object.assign({}, base.rating), tune: base.tune,
+      look: heroLook(h), palettes: [{}], rev: ++heroRev, index: -1, data: h
+    };
+    byId.hero = ch;
+    for (const k in lookCache) if (k.indexOf('hero#') === 0) delete lookCache[k];
+    return ch;
+  }
+
   C.Roster = {
     list: CHARS,
     byId,
     get: (id) => byId[id],
     look,
-    playable: () => CHARS
+    playable: () => CHARS,
+    HERO_POWERS,
+    HERO_DEFAULT,
+    heroLook,
+    setHero
   };
 })(window.CDL = window.CDL || {});

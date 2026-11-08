@@ -77,6 +77,8 @@
     })
   };
   const COMMON = () => ({
+    CHARGE: chargeAura(),
+    AWAKEN: heroAwaken(),
     GRAB: { name: 'Saisie', kind: 'grab', anim: [['grab', 3], ['grab', 5], ['idle', 16]], grab: { f0: 2, f1: 7, range: 88 }, whiffSfx: 'grab' },
     THROW: { name: 'Projection', kind: 'throw', anim: [['grab', 8], ['toss', 8], ['toss', 10], ['idle', 10]], throwAt: 14, throwHit: hit({ dmg: 95, kb: [11, -9], kd: true, launch: true, hitstop: 10, sfx: 'hit_heavy', unblockable: true }) }
   });
@@ -330,6 +332,73 @@
         if (fr > 8 && fr % 6 === 0) FX.lightning(f.x + U.rand(-40, 40), f.y - U.rand(40, 200), f.x + U.rand(-40, 40), f.y - U.rand(20, 160), U.shade(f.ch.aura, 0.4), 2, 4);
       },
       ai: { role: 'charge', min: 450, max: 9999 }
+    };
+  }
+
+  // Charge de l'aura (bouton ULTRA maintenu) : la jauge se remplit, palier après palier
+  const CHARGE_RATE = 1.25;
+  function chargeAura() {
+    return {
+      name: 'Charge de l\'aura', kind: 'charge', anim: [['charge', 6], ['charge', 30]],
+      frames: 36, loopFrom: 6, aura: true,
+      loopWhile: (f) => f.inp.s && f.meter < 300,
+      onFrame: (f, b, fr) => {
+        if (fr > 3 && !f.inp.s) { f.endMove(); return; }
+        if (fr < 6) return;
+        const before = f.meter;
+        f.gainMeter(CHARGE_RATE);
+        const bar = Math.floor(f.meter / 100);
+        const H = f.height();
+        if (bar > Math.floor(before / 100)) {
+          const max = f.meter >= 300;
+          FX.energyBurst(f.x, f.y - H * 0.5, auraOf(f), max ? 30 : 16, max ? 14 : 9);
+          FX.glow(f.x, f.y - H * 0.5, max ? 420 : 240, auraOf(f), 18);
+          FX.text(f.x, f.y - H - 40, max ? 'PUISSANCE MAX !' : bar + (bar > 1 ? ' BARRES !' : ' BARRE !'), max ? '#ffd23f' : '#ffffff', max ? 42 : 32, 55);
+          play(max ? 'transform' : 'coin');
+          b.shake(max ? 10 : 5);
+          b.emit('charge', { side: f.side, bar });
+        }
+        if (fr % 30 === 6) play('charge');
+        if (fr % 4 === 0) FX.ember(f.x + U.rand(-70, 70), -4, U.choice(['#d9c9a3', '#ffffff', auraOf(f)]), 0, -U.rand(2, 5), U.rand(3, 6), 26);
+        if (fr % 9 === 0) FX.lightning(f.x + U.rand(-40, 40), f.y - U.rand(40, H), f.x + U.rand(-40, 40), f.y - U.rand(20, H * 0.8), U.shade(auraOf(f), 0.4), 2, 4);
+        if (fr % 12 === 0) b.shake(2);
+      }
+    };
+  }
+
+  // Éveil du héros : sous 25 % de vie, le combattant se relève, plus fort (déclenché par le combat)
+  const AWAKEN_SHOUTS = ['Je ne peux pas perdre !', 'Ce n\'est pas fini !', 'Mon pouvoir se réveille !', 'Je n\'abandonne jamais !', 'Pour mes amis !'];
+  function heroAwaken() {
+    return {
+      name: 'Éveil du héros', kind: 'awaken', cine: true, anim: [['charge', 16], ['cast_up', 14], ['victory2', 14]],
+      frames: 44, invuln: [0, 44], aura: true,
+      cineName: (f) => (f.md.shout = U.choice(AWAKEN_SHOUTS)),
+      cineLabel: 'ÉVEIL DU HÉROS',
+      onFrame: (f, b, fr) => {
+        if (fr !== 16) return;
+        const col = f.ch.awakenAura || f.ch.aura;
+        f.awakened = Math.max(f.awakened, 600);
+        f.hp = Math.min(f.maxHp, f.hp + Math.round(f.maxHp * 0.1));
+        f.gainMeter(100);
+        play('transform'); b.shake(14);
+        b.flash('#ffffff', 0.55);
+        FX.glow(f.x, f.y - 100, 520, col, 26);
+        FX.energyBurst(f.x, f.y - 100, col, 36, 16);
+        FX.add({ t: 'ring', x: f.x, y: f.y - 90, size: 30, grow: 22, color: col, life: 18, width: 10 });
+        FX.text(f.x, f.y - f.height() - 20, 'ÉVEIL !', '#ffd23f', 52, 70);
+        // L'onde de choc repousse l'adversaire et dissipe ses projectiles proches
+        const a = f.opp, dir = a.x >= f.x ? 1 : -1;
+        if (Math.abs(a.x - f.x) < 330 && a.onGround && !a.invulnerable() && a.state !== 'locked' && a.state !== 'grabbed' && a.state !== 'ko') {
+          if (a.state === 'move') a.endMove();
+          a.enterBlockstun(18, dir * 15);
+        }
+        for (const e of b.entities) {
+          if (e.owner !== a || e.dead) continue;
+          if (e.isProjectile && Math.abs(e.x - f.x) < 420) { e.dead = true; FX.energyBurst(e.x, e.y, col, 8, 6); }
+          if (e.isBeam) e.life = Math.min(e.life, 6);
+        }
+        b.emit('awaken', { side: f.side });
+      }
     };
   }
 
@@ -794,6 +863,44 @@
     })
   };
 
+  // Héros personnalisé (« Crée ton héros ») : la panoplie de son pouvoir, aux couleurs de son aura,
+  // avec l'attaque ultime dont l'enfant a choisi le nom
+  SPECIALS.hero = (f) => {
+    const H = f.ch, ult = H.ultName || 'Attaque Légendaire';
+    let k;
+    if (H.power === 'mage') {
+      k = SPECIALS.leo();
+      k.N = projectile({ name: 'Éclair Magique', vis: 'stun', startup: 10, recovery: 16, speed: 16, dmg: 50, r: 12, joint: 'tip', ready: 'cast1_r', pose: 'cast_low', sfx: 'magic', stunExtra: 10, glowWeapon: true, air: true, airAngle: 0.45, w: 40, h: 24 });
+      k.F = teleport({ name: 'Téléportation Magique', where: 'behind', gap: 8, pose: 'cast_up', sfx: 'magic', strike: { dmg: 46, box: [-30, -200, 110, 200] }, aiRole: 'approach' });
+      k.D = reflector({ name: 'Bouclier Magique', style: 'shield', pose: 'cast1', window: 24 });
+      k.S = projectile({ name: 'Esprit Gardien', kind: 'super', cost: 100, cine: true, vis: 'spirit', startup: 16, recovery: 22, speed: 12, dmg: 32, hits: 4, interval: 6, r: 40, w: 160, h: 90, joint: 'tip', ready: 'cast1_r', pose: 'cast1', sfx: 'magic', hitSfx: 'hit_heavy', invuln: [0, 18], strength: 5, pierce: true, ai: { role: 'zone', min: 0, max: 9999 } });
+      k.X = rain({ name: ult, kind: 'ultimate', cost: 300, count: 14, every: 4, vis: 'star', dmg: 26, explode: 50, spread: 140, ready: 'cast1_r', pose: 'cast_up' });
+    } else if (H.power === 'ninja') {
+      k = SPECIALS.kage();
+      k.U = rising({ name: 'Envol du Corbeau', dmg: 70, pose: 'spin2', ready: 'crouch', multi: 4, vy: 18, trail: true, box: [-60, -220, 140, 220] });
+      k.X = rushLock({ name: ult, hits: 12, totalDmg: 330, seq: 72, dash: 16, speed: 19,
+        step: (f, a, b) => {
+          const ang = U.rand(0, Math.PI * 2), col = auraOf(f);
+          b.addEntity(new Afterimage(f, 0.8, col, 10, Math.cos(ang) * 90 + (a.x - f.x), U.choice([-1, 1])));
+          FX.slashArc(a.x + U.rand(-30, 30), a.y - 100 + U.rand(-40, 40), U.choice([-1, 1]), 70, -2.4, 0.6, U.shade(col, 0.3), 10, 8);
+        },
+        hold: (f, a, b, n) => { f.hidden = n > 4 && n < 60; a.y = Math.max(-60, a.y - 1); },
+        finish: (f) => { f.hidden = false; } });
+    } else if (H.power === 'lame') {
+      k = SPECIALS.takeda();
+      k.S = projectile({ name: 'Lame du Vent', kind: 'super', cost: 100, cine: true, vis: 'crescent', startup: 14, recovery: 20, speed: 16, dmg: 45, hits: 3, interval: 5, r: 50, w: 70, h: 150, ready: 'b_iai_r', pose: 'b_iai', sfx: 'slash', hitSfx: 'hit_slash', invuln: [0, 16], strength: 3, ai: { role: 'zone', min: 0, max: 9999 } });
+      k.X = rushLock({ name: ult, hits: 6, totalDmg: 340, seq: 80, dash: 12, speed: 22, ready: 'b_iai_r', pose: 'b_iai', hitSfx: 'hit_slash', spark: 'slashbig',
+        hold: (f, a, b, n) => { if (n % 2 === 0) for (let i = 0; i < 3; i++) FX.ember(a.x + U.rand(-200, 200), a.y - U.rand(0, 300), auraOf(f), 0, U.rand(-1, 1), 6, 24); if (n === 2) b.flash('#ffffff', 0.7); },
+        step: (f, a) => FX.slashArc(a.x, a.y - 110, U.choice([-1, 1]), 120, U.rand(-3, -1), U.rand(0, 1), '#ffffff', 8, 8),
+        onLock: (f, a) => { f.x = a.x + f.facing * 160; } });
+    } else {
+      k = SPECIALS.kairo();
+      k.S = transform({ name: 'Éveil Suprême', color: H.awakenAura });
+      k.X = beamUlt({ name: ult, totalDmg: 320, width: 115 });
+    }
+    return k;
+  };
+
   // Bûche de substitution (Kage)
   class Log {
     constructor(x, y) { this.x = x; this.y = y; this.vy = -6; this.life = 50; this.dead = false; this.rot = 0; }
@@ -853,7 +960,7 @@
     const ch = f.ch;
     const style = ch.style;
     const N = styleNormals(style, ch);
-    const moves = Object.assign({}, N, COMMON(), SPECIALS[ch.id] ? SPECIALS[ch.id]() : SPECIALS.kairo());
+    const moves = Object.assign({}, N, COMMON(), SPECIALS[ch.id] ? SPECIALS[ch.id](f) : SPECIALS.kairo());
     // Ajustements selon le gabarit
     const slow = style === 'heavy' || ch.id === 'godefroy' || ch.id === 'noctis' ? 1.12 : ch.id === 'kage' || ch.id === 'lumi' ? 0.9 : 1;
     const dmgK = style === 'heavy' || ch.id === 'godefroy' || ch.id === 'noctis' ? 1.12 : ch.id === 'kage' ? 0.92 : style === 'tiny' ? 0.85 : 1;
@@ -880,12 +987,12 @@
   // Liste des coups lisible (écran « Liste des coups »)
   const INPUT_NAMES = {
     L1: 'Léger', L2: 'Léger ×2', L3: 'Léger ×3', H: 'Lourd', UH: '↑ + Lourd', DL: '↓ + Léger', DH: '↓ + Lourd', AL: 'En l\'air : Léger', AH: 'En l\'air : Lourd',
-    GRAB: 'Saisie (près)', N: 'Spécial', F: '→ + Spécial', U: '↑ + Spécial', D: '↓ + Spécial', S: 'ULTRA (1 barre)', S2: 'ULTRA (1 barre, éveillé)', X: 'ULTRA (3 barres)'
+    GRAB: 'Saisie (près)', CHARGE: 'ULTRA maintenu', N: 'Spécial', F: '→ + Spécial', U: '↑ + Spécial', D: '↓ + Spécial', S: 'ULTRA (1 barre)', S2: 'ULTRA (1 barre, éveillé)', X: 'ULTRA (3 barres)'
   };
   function moveList(charId) {
     const fake = { ch: C.Roster.get(charId) };
     const moves = build(fake);
-    const order = ['N', 'F', 'U', 'D', 'S', 'S2', 'X', 'L1', 'L2', 'L3', 'H', 'UH', 'DL', 'DH', 'AL', 'AH', 'GRAB'];
+    const order = ['N', 'F', 'U', 'D', 'S', 'S2', 'X', 'CHARGE', 'L1', 'L2', 'L3', 'H', 'UH', 'DL', 'DH', 'AL', 'AH', 'GRAB'];
     return order.filter((k) => moves[k]).map((k) => ({ id: k, input: INPUT_NAMES[k], name: moves[k].name, kind: moves[k].kind }));
   }
 

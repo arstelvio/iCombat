@@ -2,6 +2,12 @@
 (function (C) {
   'use strict';
   const U = C.U, FX = C.FX;
+  const COMIC = {
+    punch: ['BAM !', 'POW !', 'BOUM !', 'WHAM !', 'PAF !', 'VLAN !', 'BONG !', 'KRAK !'],
+    slash: ['TCHAK !', 'ZING !', 'SHLAK !', 'VZIIING !', 'KLANG !'],
+    magic: ['ZAP !', 'BZZZT !', 'FLASH !', 'KABOUM !', 'PCHIOU !', 'WOUSH !'],
+    colors: ['#ffd23f', '#ff5a3c', '#3fb6ff', '#ff4fd8', '#2fd06a', '#ff8a1a']
+  };
   const NO_THROW_STATES = { hitstun: 1, blockstun: 1, airhit: 1, knockdown: 1, getup: 1, grabbed: 1, locked: 1, ko: 1, intro: 1, win: 1, lose: 1 };
 
   class Battle {
@@ -43,6 +49,8 @@
     flash(color, a) { this.flashFx = { color, a: a || 0.5 }; }
     say(text, sub, dur, color, size) { this.announce = { text, sub, t: 0, dur: dur || 70, color: color || '#ffd23f', size: size || 1 }; }
     emit(type, data) { this.events.push(Object.assign({ type }, data)); }
+    // Voix (pas pendant les démonstrations du menu)
+    voice(text, opts) { if (this.mode !== 'demo' && C.Voice) C.Voice.say(text, opts); }
 
     startRound() {
       this.round++;
@@ -91,6 +99,7 @@
         this.updateEntities();
         this.resolveHits();
         this.resolvePush();
+        this.checkAwakenings();
       }
       FX.update();
       this.updateCamera();
@@ -113,8 +122,9 @@
             const last = this.f[0].wins === this.roundsToWin - 1 && this.f[1].wins === this.roundsToWin - 1;
             this.say(last ? 'MANCHE FINALE' : 'MANCHE ' + this.round, null, 60);
             C.Audio.play('announce');
+            this.voice(last ? 'Manche finale !' : 'Manche ' + this.round, { who: 'announcer' });
           }
-          if (this.pt > 62) { this.phase = 'go'; this.pt = 0; this.say('COMBAT !', null, 40, '#ff5a3c', 1.25); C.Audio.play('fight'); }
+          if (this.pt > 62) { this.phase = 'go'; this.pt = 0; this.say('COMBAT !', null, 40, '#ff5a3c', 1.25); C.Audio.play('fight'); this.voice('Combat !', { who: 'announcer', shout: true }); }
           a.inp = b.inp = C.Fighter.EMPTY;
           break;
         case 'go':
@@ -166,6 +176,7 @@
       this.koInfo = { winner: att, loser: tgt, byUlt: att.move && att.move.kind === 'ultimate' };
       this.say('K.O. !', null, 110, '#ff3c3c', 1.5);
       C.Audio.play('ko');
+      this.voice('K.O. !', { who: 'announcer', shout: true });
       C.Audio.vibrate(120);
       this.flash('#ffffff', 0.8);
       this.shake(20);
@@ -197,6 +208,8 @@
         C.Audio.stopMusic();
         if (w.side === 0 || this.mode === 'versus2p') C.Audio.music('victory');
         this.winner = w;
+        const q = w.ch.quotes && w.ch.quotes.win;
+        if (q) this.voice(q, { who: w.ch.voice || w.ch.id });
       }
     }
 
@@ -220,10 +233,35 @@
       if (this.cfg.onEnd) this.cfg.onEnd(this.result);
     }
 
+    // =============================================================== ÉVEIL DU HÉROS
+    // Une fois par manche, sous 25 % de vie : le combattant se relève plus fort (comme dans les shonen).
+    // Toujours pour les joueurs ; pour le CPU seulement en Difficile et Légendaire.
+    canAwaken(f) {
+      if (this.training || this.mode === 'demo' || f.heroAwake || !f.moves.AWAKEN) return false;
+      const cpu = f.controller && f.controller.isCPU;
+      return !cpu || this.difficulty >= 2;
+    }
+    checkAwakenings() {
+      if (this.phase !== 'fight' || this.freeze) return;
+      for (const f of this.f) {
+        if (f.hp <= 0 || f.hp > f.maxHp * 0.25 || !this.canAwaken(f)) continue;
+        // On attend que le combattant touche le sol et ne soit plus tenu
+        const ok = f.onGround && (f.state === 'idle' || f.state === 'guard' || f.state === 'hitstun' || f.state === 'blockstun' ||
+          f.state === 'landing' || f.state === 'getup' || f.state === 'stun' || f.state === 'dash' || f.state === 'knockdown');
+        if (!ok) continue;
+        f.heroAwake = true;
+        f.crouching = false;
+        f.startMove('AWAKEN');
+      }
+    }
+
     // =============================================================== GELS / VERROUILLAGES
     superFlash(f, def) {
       const ult = def.kind === 'ultimate';
-      this.freeze = { f, t: 0, dur: ult ? 72 : 40, name: def.name, ult };
+      const name = def.cineName ? def.cineName(f) : def.name;
+      this.freeze = { f, t: 0, dur: ult ? 72 : 40, name, ult, label: def.cineLabel || (ult ? 'ULTIME' : 'SUPER') };
+      // Le héros crie le nom de son attaque, comme dans les dessins animés
+      this.voice(name + (/[!?]$/.test(name) ? '' : ' !'), { who: f.ch.voice || f.ch.id, shout: true });
       C.Audio.play('super');
       C.Audio.vibrate(ult ? 90 : 40);
       FX.glow(f.x, f.y - 110, ult ? 520 : 320, f.ch.aura, 30);
@@ -508,6 +546,7 @@
       if (big) { this.shake(7); }
       if (a.side === 0 || t.side === 0) C.Audio.vibrate(big ? 35 : 15);
       if (counterHit) FX.text(t.x, t.y - 240, 'CONTRE !', '#ff9a3c', 30, 40);
+      if (big || counterHit || t.hp <= 0) this.comicWord(px, py - 50, h, isProj);
       if (C.Store.settings.damageNumbers) FX.text(px + U.rand(-10, 10), py - 30, String(dmg), counterHit ? '#ffb070' : '#fff3c0', 22 + Math.min(14, dmg / 8), 36);
       a.moveHit = true; a.moveContact = true;
       if (a.state === 'move' && a.move && a.move.onHit && !isProj) a.move.onHit(a, t, this, h);
@@ -524,6 +563,15 @@
         this.onKO(a, t);
       }
       this.emit('hit', { side: a.side, dmg, combo: t.comboHits, counter: counterHit });
+    }
+
+    // Onomatopées façon bande dessinée sur les gros coups
+    comicWord(x, y, h, isProj) {
+      if (this.frame - (this.lastComic || -99) < 16) return;
+      this.lastComic = this.frame;
+      const slash = h.spark === 'slash' || h.spark === 'slashbig' || /slash|saber/.test(h.sfx || '');
+      const words = slash ? COMIC.slash : isProj ? COMIC.magic : COMIC.punch;
+      FX.comic(x + U.rand(-20, 20), y + U.rand(-20, 10), U.choice(words), U.choice(COMIC.colors));
     }
 
     showCombo(a, t) {
@@ -737,7 +785,7 @@
       ctx.fillText(fz.name.toUpperCase(), tx, y + bh * 0.48);
       ctx.font = Math.round(bh * 0.13) + 'px "Russo One", sans-serif';
       ctx.fillStyle = '#e8dcff';
-      ctx.fillText(fz.ult ? 'ULTIME' : 'SUPER', tx, y + bh * 0.76);
+      ctx.fillText(fz.label || (fz.ult ? 'ULTIME' : 'SUPER'), tx, y + bh * 0.76);
       ctx.restore();
     }
 
@@ -850,7 +898,7 @@
         ctx.fillText('« ' + w.ch.quotes.win + ' »', W / 2, H * 0.72 + 66);
         ctx.globalAlpha = 1;
       }
-      if (this.training) this.renderTrainingInfo(ctx, W, H);
+      if (this.training && !this.training.school) this.renderTrainingInfo(ctx, W, H);
     }
 
     drawLife(ctx, f, x, y, w, h, flip) {
