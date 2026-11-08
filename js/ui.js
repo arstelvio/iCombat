@@ -294,7 +294,7 @@
       return el;
     },
     onAny() { C.Audio.init(); C.Audio.music('menu'); UI.go('slots', {}, { reset: true }); },
-    onBack() { if (window.AndroidBridge) window.AndroidBridge.exit(); }
+    onBack() { }
   };
 
   SC.slots = {
@@ -585,8 +585,8 @@
         training: isP2 ? 'Entraînement — Mannequin' : 'Entraînement — Votre combattant'
       };
       const cfg = p.cfg || (p.cfg = { p2human: false, diff: C.Store.settings.defaultDifficulty });
-      let selId = p.sel || (isP2 ? (p.p1 === 'takeda' ? 'kairo' : 'takeda') : (d.lastChar && C.Store.isUnlocked(d.lastChar) ? d.lastChar : 'kairo'));
-      if (!C.Store.isUnlocked(selId) && !(isP2 && mode !== 'training' && false)) selId = 'kairo';
+      let selId = p.sel || (isP2 ? (p.p1 === 'takeda' ? 'kairo' : 'takeda') : (d.lastChar && C.Store.canPlay(d.lastChar) ? d.lastChar : 'kairo'));
+      if (!C.Store.canPlay(selId) && !(isP2 && mode !== 'training' && false)) selId = 'kairo';
       let costume = 0;
       const info = h('div.sel-info');
       const prevBox = h('div.sel-preview');
@@ -629,7 +629,7 @@
           h('span.rnd', null, '＋'), h('span.ctile-name', null, 'Ton héros')));
       }
       C.Roster.list.forEach((ch) => {
-        const un = C.Store.isUnlocked(ch.id);
+        const un = C.Store.canPlay(ch.id);
         const t = h('button.ctile.nav' + (un ? '' : '.locked'), { type: 'button', 'data-id': ch.id, onclick: () => {
           if (!un) {
             C.Audio.play('error');
@@ -643,7 +643,7 @@
         grid.appendChild(t);
       });
       grid.appendChild(h('button.ctile.nav.random', { type: 'button', onclick: () => {
-        const pool = C.Roster.list.filter((c) => C.Store.isUnlocked(c.id));
+        const pool = C.Roster.list.filter((c) => C.Store.canPlay(c.id));
         selId = U.choice(pool).id; costume = 0; C.Audio.play('select'); update();
       } }, h('span.rnd', null, '?'), h('span.ctile-name', null, 'Hasard')));
 
@@ -691,14 +691,14 @@
     music: 'select',
     render(p) {
       const tiles = C.Stages.list.map((st) => {
-        const un = C.Store.hasStage(st.id);
+        const un = C.Store.canUseStage(st.id);
         return h('button.stile.nav' + (un ? '' : '.locked'), { type: 'button', style: { backgroundImage: 'url(' + stageThumb(st.id, 320, 180) + ')' }, onclick: () => {
           if (!un) { C.Audio.play('error'); UI.toast('Arène verrouillée', 'Progressez dans l\'Histoire ou achetez-la dans la Boutique.'); return; }
           C.Audio.play('confirm'); p.onPick(st.id);
         } }, h('span.stile-name', null, un ? st.name : '🔒 ' + st.name));
       });
       tiles.unshift(h('button.stile.nav.random.primary', { type: 'button', onclick: () => {
-        const pool = C.Stages.list.filter((s) => C.Store.hasStage(s.id));
+        const pool = C.Stages.list.filter((s) => C.Store.canUseStage(s.id));
         C.Audio.play('confirm'); p.onPick(U.choice(pool).id);
       } }, h('span.rnd', null, '?'), h('span.stile-name', null, 'Arène au hasard')));
       return h('div', null, topbar('Choisissez l\'arène', () => UI.back()), h('div.sgrid', null, tiles));
@@ -922,7 +922,7 @@
     render() {
       const grid = h('div.cgrid.gallery');
       C.Roster.list.forEach((ch) => {
-        const un = C.Store.isUnlocked(ch.id);
+        const un = C.Store.canPlay(ch.id);
         grid.appendChild(h('button.ctile.nav' + (un ? '' : '.locked'), { type: 'button', onclick: () => UI.go('charDetail', { id: ch.id }) },
           portraitImg(ch.id, 0, 96, { silhouette: !un }), h('span.ctile-name', null, un ? (ch.short || ch.name) : '???')));
       });
@@ -933,7 +933,7 @@
   SC.charDetail = {
     render(p) {
       const ch = C.Roster.get(p.id);
-      const un = C.Store.isUnlocked(ch.id);
+      const un = C.Store.canPlay(ch.id);
       const chap = C.Story.chapters.find((c) => c.unlock === ch.id);
       if (!un) {
         return h('div', null, topbar('???', () => UI.back()), h('div.center-panel', null,
@@ -1083,6 +1083,10 @@
             h('div.opt-line', null, h('span', null, 'Difficulté par défaut'), chips(DIFF, s.defaultDifficulty, (v) => { s.defaultDifficulty = v; save(); })),
             toggle('Chiffres de dégâts', 'damageNumbers'),
             toggle('Tremblements d\'écran', 'shake')),
+          h('div.opt-group', null, h('div.opt-head', null, '🔓 Tout débloquer (hors Histoire)'),
+            toggle('Tous les combattants', 'allChars'),
+            toggle('Toutes les arènes', 'allStages'),
+            h('div.opt-note', null, 'Pour jouer tout le monde en Combat, Arcade, Survie et Entraînement sans finir l\'Histoire. L\'Histoire, la boutique et les succès ne changent pas.')),
           h('div.opt-group', null, h('div.opt-head', null, '🖥 Affichage'),
             h('div.opt-line', null, h('span', null, 'Qualité graphique'), chips([{ label: 'Auto', value: 'auto' }, { label: 'Basse', value: 'low' }, { label: 'Moyenne', value: 'medium' }, { label: 'Haute', value: 'high' }], s.quality, (v) => { s.quality = v; save(); if (C.resize) C.resize(); }))),
           h('div.res-btns', null,
@@ -1099,7 +1103,7 @@
           p.epilogue ? h('div.res-title.win', null, 'FÉLICITATIONS !') : null,
           p.epilogue ? h('p', null, 'Vous avez vaincu Oméga et refermé la Faille des Mondes. Oméga est désormais jouable ! Essayez l\'Arcade en Légendaire, la Survie, et collectionnez tous les costumes.') : null,
           h('div.logo.small', null, h('div.logo-top', null, 'CHOC DES'), h('div.logo-main', null, 'LEGENDES')),
-          h('p', null, 'Un jeu de combat 2D en HTML5 pour Android.'),
+          h('p', null, 'Un jeu de combat 2D en HTML5, à jouer sur iPhone, tablette ou ordinateur.'),
           h('p', null, 'Tous les personnages, arènes, musiques et effets sont des créations originales générées par le code, inspirées des grands archétypes de la fiction : guerriers à aura, magiciens, chevaliers, ninjas, samouraïs, chevaliers stellaires et créatures légendaires.'),
           h('p', null, 'Polices : Bangers et Russo One (SIL Open Font License).'),
           btn(p.epilogue ? '📖 Retour à l\'Histoire' : 'Retour', () => (p.epilogue ? C.Game.quit('story') : UI.back()), 'primary')));

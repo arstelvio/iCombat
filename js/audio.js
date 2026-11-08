@@ -280,8 +280,7 @@
   A.vibrate = function (ms) {
     if (!C.Store.settings.vibration) return;
     try {
-      if (window.AndroidBridge && window.AndroidBridge.vibrate) window.AndroidBridge.vibrate(ms | 0);
-      else if (navigator.vibrate) navigator.vibrate(ms | 0);
+      if (navigator.vibrate) navigator.vibrate(ms | 0);
     } catch (e) { /* ignore */ }
   };
 

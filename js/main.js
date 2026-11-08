@@ -146,11 +146,6 @@
     for (const k in p) padPrev[k] = p[k];
   }
 
-  // Bouton retour Android
-  C.onBack = function () {
-    if (C.Game.battle && !C.Game.battle.paused && !C.UI.visible()) { C.Game.pause(); return true; }
-    return C.UI.back();
-  };
   C.onAppPause = function () {
     if (C.Game.battle && !C.Game.battle.paused && !C.Game.battle.result) C.Game.pause();
     C.Store.save();

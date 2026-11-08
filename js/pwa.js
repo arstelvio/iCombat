@@ -6,13 +6,12 @@
   const iOS = /iP(hone|od|ad)/.test(ua) || (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1);
   const standalone = nav.standalone === true ||
     !!(window.matchMedia && window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
-  const native = !!window.AndroidBridge;
-  const web = !native && /^https?:$/.test(location.protocol);
+  const web = /^https?:$/.test(location.protocol);
 
   const Pwa = C.Pwa = {
-    iOS, standalone, native,
-    iosBrowser: iOS && !standalone && !native, // ouvert dans Safari : proposer l'ajout à l'écran d'accueil
-    canVibrate: native || typeof nav.vibrate === 'function',
+    iOS, standalone,
+    iosBrowser: iOS && !standalone, // ouvert dans Safari : proposer l'ajout à l'écran d'accueil
+    canVibrate: typeof nav.vibrate === 'function',
     offlineReady: false,
     updateReady: false,
     version: null

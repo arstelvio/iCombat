@@ -4,24 +4,11 @@
   const PREFIX = 'cdl_';
   const SLOT_COUNT = 3;
 
+  // Sauvegardes dans le stockage du navigateur (propre à l'app installée sur l'écran d'accueil)
   const backend = {
-    get(key) {
-      try {
-        if (window.AndroidBridge && window.AndroidBridge.load) {
-          const v = window.AndroidBridge.load(PREFIX + key);
-          if (v !== null && v !== undefined) return v;
-        }
-      } catch (e) { /* ignore */ }
-      try { return window.localStorage.getItem(PREFIX + key); } catch (e) { return null; }
-    },
-    set(key, value) {
-      try { if (window.AndroidBridge && window.AndroidBridge.save) window.AndroidBridge.save(PREFIX + key, value); } catch (e) { /* ignore */ }
-      try { window.localStorage.setItem(PREFIX + key, value); } catch (e) { /* ignore */ }
-    },
-    remove(key) {
-      try { if (window.AndroidBridge && window.AndroidBridge.remove) window.AndroidBridge.remove(PREFIX + key); } catch (e) { /* ignore */ }
-      try { window.localStorage.removeItem(PREFIX + key); } catch (e) { /* ignore */ }
-    }
+    get(key) { try { return window.localStorage.getItem(PREFIX + key); } catch (e) { return null; } },
+    set(key, value) { try { window.localStorage.setItem(PREFIX + key, value); } catch (e) { /* ignore */ } },
+    remove(key) { try { window.localStorage.removeItem(PREFIX + key); } catch (e) { /* ignore */ } }
   };
 
   const DEFAULT_SETTINGS = {
@@ -40,6 +27,8 @@
     showInputs: false,
     voice: true,          // histoire lue à voix haute, attaques criées
     easySpecials: true,   // SPÉCIAL seul choisit la technique ; Léger ×4 finit en technique spéciale
+    allChars: false,      // tous les combattants jouables hors Histoire (sans avoir fini les chapitres)
+    allStages: false,     // toutes les arènes disponibles hors Histoire
     autoBlockHint: true,
     language: 'fr'
   };
@@ -179,6 +168,10 @@
       return true;
     },
     hasStage(id) { return !!this.current && this.current.stages.indexOf(id) >= 0; },
+    // Modes hors Histoire : l'option « Tout débloquer » rend jouables tous les combattants et arènes,
+    // sans modifier la progression de la sauvegarde (Histoire, boutique, succès)
+    canPlay(charId) { return this.isUnlocked(charId) || (!!this.settings.allChars && charId !== 'hero' && !!(C.Roster && C.Roster.get(charId))); },
+    canUseStage(id) { return this.hasStage(id) || !!this.settings.allStages; },
     unlockStage(id) {
       if (!this.current || this.hasStage(id)) return false;
       this.current.stages.push(id);

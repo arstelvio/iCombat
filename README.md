@@ -33,6 +33,9 @@ Le jeu a alors son icône, s'ouvre en plein écran, en paysage, et fonctionne **
 - **Pas de son ?** Désactivez le mode silencieux de l'iPhone.
 - **Pas de voix ?** Vérifiez l'option *Voix* dans les réglages du jeu et le volume de l'iPhone.
 - **L'écran reste en portrait ?** Ouvrez le Centre de contrôle et désactivez le verrouillage de la rotation.
+- **Jouer tous les combattants sans finir l'Histoire** : **Options → 🔓 Tout débloquer (hors Histoire)**.
+  Tous les combattants (et les arènes, si on le souhaite) deviennent jouables en Combat, Arcade, Survie et
+  Entraînement ; l'Histoire, la boutique et les succès ne changent pas.
 - **Mises à jour** : quand une nouvelle version est en ligne, le jeu la télécharge tout seul (avec Internet)
   et l'applique la prochaine fois que vous revenez sur l'écran titre.
 - Fonctionne aussi sur iPad, Android (Chrome → « Ajouter à l'écran d'accueil ») et ordinateur.
