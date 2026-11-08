@@ -56,7 +56,7 @@
     active: false,
     LESSONS,
 
-    // Lance l'École : le héros du joueur (ou Kaïro) contre un partenaire d'entraînement
+    // Lance l'École : le héros du joueur (ou Carotte) contre un partenaire d'entraînement
     start() {
       const hero = C.Roster.get('hero') ? 'hero' : 'kairo';
       C.Game.start({

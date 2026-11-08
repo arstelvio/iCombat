@@ -7,7 +7,7 @@
 
   const CHARS = [
     {
-      id: 'kairo', name: 'Kaïro', title: 'Guerrier Céleste', world: 'Monde des Arts Célestes',
+      id: 'kairo', name: 'Carotte', title: 'Guerrier Céleste', world: 'Monde des Arts Célestes',
       bio: "Combattant infatigable venu d'un monde où l'énergie vitale, le Ki, se maîtrise comme une arme. Lorsqu'il libère son Éveil Doré, ses cheveux s'embrasent d'or et sa puissance décuple.",
       quotes: { intro: 'Montre-moi ce que tu as dans le ventre !', win: "C'était un super combat ! On remet ça ?", lose: 'Je… je dois encore m\'entraîner…' },
       style: 'martial', aura: '#5fd3ff', awakenAura: '#ffd84a',
@@ -20,8 +20,8 @@
       palettes: [{}, { top: '#2e6fd8', bottom: '#2e6fd8', inner: '#f2f2f2', belt: '#f2f2f2', boots: '#f2f2f2' }, { top: '#f2f2f2', bottom: '#f2f2f2', inner: '#202020', belt: '#202020', hair: '#3a2a1a' }]
     },
     {
-      id: 'zarkan', name: 'Zarkan', title: 'Prince Déchu', world: 'Monde des Arts Célestes',
-      bio: "Prince d'une race guerrière éteinte, orgueilleux et implacable. Il a juré de surpasser Kaïro, son éternel rival. Son énergie violette est aussi dévastatrice que sa fierté.",
+      id: 'zarkan', name: 'Légume', title: 'Prince Déchu', world: 'Monde des Arts Célestes',
+      bio: "Prince d'une race guerrière éteinte, orgueilleux et implacable. Il a juré de surpasser Carotte, son éternel rival. Son énergie violette est aussi dévastatrice que sa fierté.",
       quotes: { intro: 'Incline-toi devant ton prince.', win: 'Pathétique. Un prince ne perd jamais.', lose: 'Impossible… Moi, battu ?!' },
       style: 'martial', aura: '#b86cff', awakenAura: '#ffd84a',
       stats: { hp: 980, walk: 4.8, dash: 13.5, jump: 19, airJumps: 1, weight: 0.95, power: 1.039, defense: 1.039 },
@@ -147,8 +147,8 @@
       palettes: [{}, { top: '#1b2a1b', 'robe.color': '#1b2a1b', 'cape.color': '#0e1a0e' }, { top: '#3a0a0a', 'robe.color': '#3a0a0a', 'cape.color': '#200505' }]
     },
     {
-      id: 'kael', name: 'Kael Orin', short: 'Kael', title: 'Chevalier Astral', world: 'Galaxie de la Bordure',
-      bio: "Gardien de la paix d'un ordre ancien, Kael ressent le Flux qui relie toute chose. Son sabre à plasma bleu et ses réflexes surhumains font de lui un adversaire redoutable.",
+      id: 'kael', name: 'Lucas Orin', short: 'Lucas', title: 'Chevalier Astral', world: 'Galaxie de la Bordure',
+      bio: "Gardien de la paix d'un ordre ancien, Lucas ressent le Flux qui relie toute chose. Son sabre à plasma bleu et ses réflexes surhumains font de lui un adversaire redoutable.",
       quotes: { intro: 'Que le Flux me guide.', win: 'La colère mène à la défaite.', lose: 'Je n\'ai pas écouté le Flux…' },
       style: 'blade', aura: '#3fa9ff',
       stats: { hp: 1000, walk: 4.7, dash: 13.5, jump: 20, airJumps: 1, weight: 1.0, power: 0.972, defense: 1.029 },
@@ -224,7 +224,7 @@
       palettes: [{}, { skin: '#2a2a33', top: '#2a2a33', bottom: '#2a2a33', 'tail.color': '#2a2a33', 'wings.membrane': '#b71c1c', eye: '#ff3030' }, { skin: '#f2c230', top: '#f2c230', bottom: '#f2c230', 'tail.color': '#f2c230', 'wings.membrane': '#5c6bc0' }]
     },
     {
-      id: 'lumi', name: 'Lumi', title: 'Esprit Primordial', world: 'Ruines Célestes',
+      id: 'lumi', name: 'Miaou', title: 'Esprit Primordial', world: 'Ruines Célestes',
       bio: "Minuscule créature rose qui flotte dans les airs, aussi espiègle que mystérieuse. On raconte qu'elle porte en elle le code génétique de toutes les créatures du monde.",
       quotes: { intro: 'Mew ? Miou !', win: 'Miouuu ! (fait une pirouette)', lose: 'Miou… (se roule en boule)' },
       style: 'tiny', aura: '#ff9ad6',
@@ -238,8 +238,8 @@
       palettes: [{}, { skin: '#a7d8ff', top: '#a7d8ff', bottom: '#a7d8ff', 'tail.color': '#a7d8ff', eye: '#7b2fd0' }, { skin: '#ffe680', top: '#ffe680', bottom: '#ffe680', 'tail.color': '#ffe680', eye: '#2e7d32' }]
     },
     {
-      id: 'psykron', name: 'Psykron', title: 'Clone Psychique', world: 'Ruines Célestes',
-      bio: "Créature psychique créée en laboratoire à partir de l'ADN de Lumi. Froid et surpuissant, il méprise ses créateurs et cherche le sens de sa propre existence.",
+      id: 'psykron', name: 'Super Miaou', title: 'Clone Psychique', world: 'Ruines Célestes',
+      bio: "Créature psychique créée en laboratoire à partir de l'ADN de Miaou. Froid et surpuissant, il méprise ses créateurs et cherche le sens de sa propre existence.",
       quotes: { intro: 'Je n\'ai pas demandé à naître.', win: 'Ta volonté est aussi fragile que ton corps.', lose: 'Qui suis-je… vraiment ?' },
       style: 'martial', aura: '#b46cff',
       stats: { hp: 1000, walk: 4.3, dash: 13, jump: 18, airJumps: 1, weight: 1.0, power: 1.083, defense: 0.998, float: false },

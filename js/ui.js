@@ -14,7 +14,7 @@
     'Avec 3 barres d\'ULTRA, déclenchez votre ULTIME. Maintenez ↓ pour garder vos barres et lancer un simple Super.',
     'Bloquer trop longtemps use votre jauge de garde : attention à la GARDE BRISÉE !',
     'Après un Lanceur (↑ + Lourd), sautez pour poursuivre le combo en l\'air.',
-    'Kaïro et Zarkan peuvent se transformer grâce à l\'Éveil Doré (ULTRA avec 1 barre).',
+    'Carotte et Légume peuvent se transformer grâce à l\'Éveil Doré (ULTRA avec 1 barre).',
     'Terminez les chapitres du mode Histoire pour débloquer de nouveaux combattants.',
     'Gagnez des orbes ◆ pour acheter costumes, arènes et combattants dans la Boutique.',
     'Maintenez ULTRA pour CHARGER votre aura : la jauge se remplit, jusqu\'à 3 barres !',

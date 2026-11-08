@@ -70,8 +70,8 @@
     {
       id: 5, title: 'Le Prince Déchu', hero: 'kairo', foe: 'zarkan', stage: 'temple', unlock: 'zarkan',
       intro: [
-        L('zarkan', 'Kaïro ! Même dans un autre monde, il faut que je te trouve sur mon chemin.'),
-        L('kairo', 'Zarkan ! Toi aussi, tu as été aspiré par une faille ?'),
+        L('zarkan', 'Carotte ! Même dans un autre monde, il faut que je te trouve sur mon chemin.'),
+        L('kairo', 'Légume ! Toi aussi, tu as été aspiré par une faille ?'),
         L('zarkan', 'Une voix m\'a promis une puissance infinie si je t\'éliminais. Je n\'ai besoin de personne pour te battre… mais l\'offre est tentante.'),
         L('kairo', 'Une voix ? Ça ne me dit rien qui vaille. Allez, viens !')
       ],
@@ -123,7 +123,7 @@
     {
       id: 9, title: 'Ténèbres Mécaniques', hero: 'kael', foe: 'noctis', stage: 'vaisseau', unlock: 'noctis',
       intro: [
-        L('noctis', '(souffle mécanique) Kael Orin. Le dernier des Chevaliers Astraux.'),
+        L('noctis', '(souffle mécanique) Lucas Orin. Le dernier des Chevaliers Astraux.'),
         L('kael', 'Seigneur Noir. Ces failles portent ta signature.'),
         L('noctis', 'Mon maître sert désormais une puissance plus grande que le Flux lui-même. Rejoins-nous… ou péris.')
       ],
@@ -162,7 +162,7 @@
     {
       id: 12, title: 'Le Clone Parfait', hero: 'lumi', foe: 'psykron', stage: 'ruines', unlock: 'psykron',
       intro: [
-        L('psykron', 'Lumi. L\'originale. Celle dont on m\'a tiré, comme on arrache une page à un livre.'),
+        L('psykron', 'Miaou. L\'originale. Celle dont on m\'a tiré, comme on arrache une page à un livre.'),
         L('lumi', 'Miou… ? (elle tend la patte vers lui)'),
         L('psykron', 'Ne me regarde pas avec pitié ! Oméga m\'a montré la vérité : je ne suis qu\'une copie. Prouve-moi le contraire !')
       ],
