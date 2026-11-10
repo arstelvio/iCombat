@@ -1,4 +1,5 @@
-/* Choc des Légendes — l'École du Maître : tutoriel guidé et lu à voix haute pour apprendre à combattre */
+/* Choc des Légendes — l'École du Maître : tutoriel guidé et lu à voix haute pour apprendre à combattre
+   (se déplacer dans l'arène 3D, tourner autour de l'adversaire, sauter, frapper, se protéger, charger son aura) */
 (function (C) {
   'use strict';
   const U = C.U;
@@ -23,10 +24,13 @@
 
   const LESSONS = [
     { hl: 'stick',
-      text: () => 'Bienvenue, jeune héros ! Je suis Maître Shen. ' + (touch() ? 'Pose ton pouce à gauche de l\'écran et fais-le glisser pour marcher vers ton adversaire.' : 'Marche vers ton adversaire avec Q et D, ou les flèches.'),
-      check: (s, b) => Math.abs(b.f[0].x - s.x0) > 110 },
+      text: () => 'Bienvenue, jeune héros ! Je suis Maître Shen. ' + (touch() ? 'Pose ton pouce à gauche de l\'écran et pousse-le dans la direction où tu veux aller. Cours dans l\'arène !' : 'Cours dans l\'arène avec les touches Z, Q, S, D ou les flèches.'),
+      check: (s, b) => { const w = b.world(b.f[0].x, b.f[0].zl); return Math.hypot(w[0] - s.w0[0], w[1] - s.w0[1]) > 130; } },
     { hl: 'stick',
-      text: () => 'Bien ! Pour sauter, ' + (touch() ? 'glisse ton pouce vers le haut.' : 'appuie sur Z, ou sur la flèche du haut.'),
+      text: () => 'L\'arène est en trois dimensions ! Pousse ' + (touch() ? 'ton pouce vers le haut ou vers le bas de l\'écran' : 'vers le haut ou vers le bas') + ' pour tourner autour de ton adversaire : c\'est comme ça qu\'on esquive.',
+      check: (s, b) => b.turned - s.turn0 > 0.7 },
+    { hl: 'j',
+      text: () => 'Bien ! Pour sauter, appuie sur ' + K('SAUT', 'Espace') + '.',
       check: (s, b) => !b.f[0].onGround },
     { hl: 'a',
       text: () => 'Approche-toi et frappe avec ' + K('LÉGER', 'J') + ', trois fois de suite : c\'est un combo !',
@@ -35,7 +39,7 @@
       text: () => 'Un gros coup maintenant : appuie sur ' + K('LOURD', 'K') + ' !',
       check: (s) => seenAny(s, ['H', 'UH', 'DH', 'AH', 'FH']) },
     { hl: 'c',
-      text: () => 'Lance une technique spéciale avec ' + K('SPÉCIAL', 'L') + ' ! Essaie aussi en poussant le joystick.',
+      text: () => 'Lance une technique spéciale avec ' + K('SPÉCIAL', 'L') + ' ! Elle change si tu pousses le joystick en même temps.',
       check: (s) => s.kinds.special },
     { hl: 'g', attack: true,
       text: () => 'Attention, il va t\'attaquer ! Reste appuyé sur ' + K('GARDE', 'I') + ' pour bloquer ses coups.',
@@ -99,7 +103,7 @@
       const b = this.b, p = b.f[0];
       this.idx = i;
       const L = LESSONS[i];
-      this.s = { x0: p.x, hits0: p.matchStats.hits, blocks0: p.matchStats.blocks + p.matchStats.parries, seen: {}, kinds: {} };
+      this.s = { w0: b.world(p.x, p.zl), turn0: b.turned, hits0: p.matchStats.hits, blocks0: p.matchStats.blocks + p.matchStats.parries, seen: {}, kinds: {} };
       this.sparring.mode = L.attack ? 'attack' : 'stand';
       if (L.meter != null) p.meter = L.meter;
       if (L.meterMin != null) p.meter = Math.max(p.meter, L.meterMin);

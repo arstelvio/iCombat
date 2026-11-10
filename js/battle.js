@@ -1,4 +1,7 @@
-/* Choc des Légendes — gestion d'un combat : manches, caméra, collisions, HUD */
+/* Choc des Légendes — gestion d'un combat : manches, caméra, collisions, HUD.
+   Arène 3D : la logique des coups se joue dans le « plan de combat », plan vertical qui passe par les deux
+   combattants. Quand l'un d'eux se déplace sur le côté, ce plan pivote dans l'arène (reframe) ; les
+   projectiles et les effets, eux, continuent tout droit et peuvent donc être esquivés. */
 (function (C) {
   'use strict';
   const U = C.U, FX = C.FX;
@@ -8,6 +11,7 @@
     magic: ['ZAP !', 'BZZZT !', 'FLASH !', 'KABOUM !', 'PCHIOU !', 'WOUSH !'],
     colors: ['#ffd23f', '#ff5a3c', '#3fb6ff', '#ff4fd8', '#2fd06a', '#ff8a1a']
   };
+  const ARENA_R = 1150;   // rayon de l'arène circulaire
   const NO_THROW_STATES = { hitstun: 1, blockstun: 1, airhit: 1, knockdown: 1, getup: 1, grabbed: 1, locked: 1, ko: 1, intro: 1, win: 1, lose: 1 };
 
   class Battle {
@@ -24,10 +28,13 @@
       this.difficulty = cfg.difficulty == null ? 1 : cfg.difficulty;
       this.parryWindow = 6;
       FX.reset();
+      // Plan de combat : angle th et origine (ox, oz) dans l'arène
+      this.ax = { th: 0, ox: 0, oz: 0 };
+      this.turned = 0;
       this.f = [new C.Fighter(this, 0, cfg.p1), new C.Fighter(this, 1, cfg.p2)];
       this.round = 0;
       this.drawCount = 0;
-      this.cam = { x: 0, y: 0, zoom: 1, groundY: 0, baseGroundY: 0, shake: 0, sx: 0, sy: 0 };
+      this.cam = { x: 0, y: 0, zoom: 1, shake: 0, sx: 0, sy: 0, px: 0, py: 320, pz: 1250, tx: 0, ty: 110, tz: 0, fov: 36, set: false };
       this.flashFx = null;
       this.freeze = null;
       this.slowmo = 0;
@@ -44,6 +51,79 @@
     }
 
     opponentOf(f) { return f === this.f[0] ? this.f[1] : this.f[0]; }
+
+    // =============================================================== ARÈNE 3D
+    // Direction (angle dans l'arène) dans laquelle un combattant regarde son adversaire
+    dirYaw(f) { return this.ax.th + (f.facing > 0 ? 0 : Math.PI); }
+    // Position dans l'arène d'un point du plan de combat
+    world(x, zl) {
+      const A = this.ax, c = Math.cos(A.th), s = Math.sin(A.th);
+      return [A.ox + x * c - zl * s, A.oz + x * s + zl * c];
+    }
+    // Joystick (relatif à la caméra) → déplacement dans le plan : [le long de l'axe, latéral]
+    stickToPlane(sx, sy) {
+      const c = this.cam, A = this.ax;
+      let fx = c.tx - c.px, fz = c.tz - c.pz;
+      const l = Math.hypot(fx, fz) || 1;
+      fx /= l; fz /= l;
+      const mx = sx * -fz + -sy * fx, mz = sx * fx + -sy * fz;
+      const ct = Math.cos(A.th), st = Math.sin(A.th);
+      return [mx * ct + mz * st, -mx * st + mz * ct];
+    }
+    // Fait pivoter le plan de combat de dth autour du point (px, pz) : les positions dans l'arène ne changent pas
+    rotateFrame(dth, px, pz) {
+      const A = this.ax, c = Math.cos(-dth), s = Math.sin(-dth);
+      const rot = (o) => { const dx = o.x - px, dz = (o.zl || 0) - pz; o.x = px + dx * c - dz * s; o.zl = pz + dx * s + dz * c; };
+      const vel = (o) => { const vx = o.vx || 0, vz = o.vzl || 0; o.vx = vx * c - vz * s; o.vzl = vx * s + vz * c; };
+      for (const f of this.f) rot(f);
+      for (const e of this.entities) { if (typeof e.x === 'number') { rot(e); if (e.isProjectile || e.isShip) vel(e); } }
+      for (const p of FX.parts) { rot(p); if (p.vx || p.vzl) vel(p); if (p.x2 != null) { const q = { x: p.x2, zl: p.zl2 || 0 }; rot(q); p.x2 = q.x; p.zl2 = q.zl; } }
+      for (const t of FX.texts) rot(t);
+      const c0 = Math.cos(A.th), s0 = Math.sin(A.th), c1 = Math.cos(A.th + dth), s1 = Math.sin(A.th + dth);
+      A.ox += (px * c0 - pz * s0) - (px * c1 - pz * s1);
+      A.oz += (px * s0 + pz * c0) - (px * s1 + pz * c1);
+      A.th += dth;
+      this.turned += Math.abs(dth);
+    }
+    shiftFrame(sh) {
+      const A = this.ax;
+      for (const f of this.f) f.zl -= sh;
+      for (const e of this.entities) if (typeof e.x === 'number') e.zl = (e.zl || 0) - sh;
+      for (const p of FX.parts) { p.zl = (p.zl || 0) - sh; if (p.x2 != null) p.zl2 = (p.zl2 || 0) - sh; }
+      for (const t of FX.texts) t.zl = (t.zl || 0) - sh;
+      A.ox += -Math.sin(A.th) * sh; A.oz += Math.cos(A.th) * sh;
+    }
+    // Après les déplacements : garde les combattants dans l'arène et réaligne le plan sur eux
+    reframe() {
+      const [a, b] = this.f, A = this.ax, R = ARENA_R - 44;
+      for (const f of this.f) {
+        if (!f.zl && f.x > this.stage.left + 44 && f.x < this.stage.right - 44) continue;
+        const ct = Math.cos(A.th), st = Math.sin(A.th);
+        const wx = A.ox + f.x * ct - f.zl * st, wz = A.oz + f.x * st + f.zl * ct;
+        const d = Math.hypot(wx, wz);
+        if (d > R) {
+          const dx = wx * R / d - A.ox, dz = wz * R / d - A.oz;
+          f.x = dx * ct + dz * st; f.zl = -dx * st + dz * ct;
+        }
+      }
+      if (a.zl || b.zl) {
+        const dx = b.x - a.x, dz = b.zl - a.zl;
+        if (Math.abs(dx) > 26 && dz) {
+          let dth = Math.atan2(dz, dx);
+          if (dth > Math.PI / 2) dth -= Math.PI; else if (dth < -Math.PI / 2) dth += Math.PI;
+          this.rotateFrame(U.clamp(dth, -0.16, 0.16), (a.x + b.x) / 2, (a.zl + b.zl) / 2);
+        }
+        const sh = (a.zl + b.zl) / 2;
+        if (sh) this.shiftFrame(sh);
+        if (Math.abs(a.zl) < 0.01) a.zl = 0;
+        if (Math.abs(b.zl) < 0.01) b.zl = 0;
+      }
+      // limites le long de l'axe : la corde du cercle
+      const ct = Math.cos(A.th), st = Math.sin(A.th);
+      const cx = -(A.ox * ct + A.oz * st), cz = A.ox * st - A.oz * ct;
+      const half = Math.sqrt(Math.max(3600, ARENA_R * ARENA_R - cz * cz));
+      this.stage.left = cx - half; this.stage.right = cx + half;
+    }
     addEntity(e) { this.entities.push(e); return e; }
     shake(n) { if (C.Store.settings.shake) this.cam.shake = Math.max(this.cam.shake, n); }
     flash(color, a) { this.flashFx = { color, a: a || 0.5 }; }
@@ -57,13 +137,15 @@
       this.entities.length = 0;
       FX.reset();
       const [a, b] = this.f;
+      this.ax.th = 0; this.ax.ox = 0; this.ax.oz = 0;
+      this.stage.left = -ARENA_R; this.stage.right = ARENA_R;
       a.resetRound(-260, 1); b.resetRound(260, -1);
       if (this.round > 1) { a.state = 'idle'; b.state = 'idle'; }
       this.clock = this.timeLimit * 60;
       this.phase = this.round === 1 ? 'intro' : 'ready';
       this.pt = 0;
       this.koInfo = null;
-      this.cam.x = 0; this.cam.zoom = 1;
+      this.cam.x = 0; this.cam.zoom = 1; this.cam.set = this.round > 1 ? false : this.cam.set;
       if (this.training) { this.phase = 'fight'; a.state = 'idle'; b.state = 'idle'; this.clock = Infinity; }
       if (this.mode === 'demo') { this.phase = 'fight'; a.state = 'idle'; b.state = 'idle'; this.clock = Infinity; }
     }
@@ -92,6 +174,7 @@
       const fighting = this.phase === 'fight' || this.phase === 'ko' || this.phase === 'koWait' || this.phase === 'roundEnd' || this.phase === 'timeout';
       if (fighting || this.phase === 'intro' || this.phase === 'ready' || this.phase === 'go' || this.phase === 'matchEnd') {
         a.update(); b.update();
+        this.reframe();
       }
       if (fighting) {
         this.handleThrows();
@@ -264,8 +347,9 @@
       this.voice(name + (/[!?]$/.test(name) ? '' : ' !'), { who: f.ch.voice || f.ch.id, shout: true });
       C.Audio.play('super');
       C.Audio.vibrate(ult ? 90 : 40);
-      FX.glow(f.x, f.y - 110, ult ? 520 : 320, f.ch.aura, 30);
-      this.flash(ult ? '#ffffff' : f.ch.aura, ult ? 0.6 : 0.35);
+      // halo discret : la caméra 3D fait un gros plan sur le héros, il doit rester bien visible
+      FX.glow(f.x, f.y - 110, ult ? 300 : 220, f.ch.aura, 24, { alpha: 0.45 });
+      this.flash(ult ? '#ffffff' : f.ch.aura, ult ? 0.45 : 0.25);
       this.emit('super', { side: f.side, ult });
       if (f.controller && f.controller.isCPU) f.controller.onSuper && f.controller.onSuper();
     }
@@ -369,6 +453,7 @@
         for (let j = 0; j < E.length; j++) {
           const q = E[j];
           if (i === j || q.dead || q.owner === p.owner || !(q.isProjectile || q.isBeam)) continue;
+          if (q.isProjectile && Math.abs((p.zl || 0) - (q.zl || 0)) > (p.latR || 20) + (q.latR || 20)) continue;
           const rq = q.hitbox ? q.hitbox() : null;
           if (!rq) continue;
           if (U.overlap(p.hitbox(), rq)) {
@@ -396,6 +481,15 @@
         // Contact avec un réflecteur au corps-à-corps → bloqué
         for (const ah of hits) {
           if (!hb || !U.overlap(ah.rect, hb)) continue;
+          // 3D : la cible s'est décalée hors de la ligne du coup (les coups circulaires « arc » balaient tout)
+          if (!ah.hit.arc && a.aimMiss(t) > (ah.hit.lat || 40) * a.size + t.pushWidth() * 0.5) {
+            if (!a.md.dodged) {
+              a.md.dodged = true;
+              FX.text(t.x, t.y - t.height() - 30, 'ESQUIVE !', '#9fe8ff', 30, 40);
+              this.emit('dodge', { side: t.side });
+            }
+            continue;
+          }
           a.moveHitIds[ah.idx] = a.mf;
           const px = (Math.max(ah.rect.x, hb.x) + Math.min(ah.rect.x + ah.rect.w, hb.x + hb.w)) / 2;
           const py = (Math.max(ah.rect.y, hb.y) + Math.min(ah.rect.y + ah.rect.h, hb.y + hb.h)) / 2;
@@ -410,6 +504,9 @@
         const r = e.hitbox();
         if (!r) continue;
         const t = this.opponentOf(e.owner);
+        // 3D : l'entité passe-t-elle à côté de la cible ?
+        const lat = e.lateral ? e.lateral(t) : Math.abs((e.zl || 0) - t.zl);
+        if (lat > (e.latR != null ? e.latR : 30) + t.pushWidth() * 0.5) continue;
         // réflecteurs
         if (e.isProjectile && t.state === 'move' && t.move.reflect && t.mf >= t.move.reflect[0] && t.mf < t.move.reflect[1] && e.reflectable) {
           const H = t.dims.height * t.size;
@@ -617,22 +714,39 @@
       }
     }
 
-    updateCamera(frozen) {
+    // Caméra 3D : tourne avec le plan de combat, recule quand les combattants s'éloignent,
+    // et passe en gros plan pour les Supers, les K.O. et la victoire
+    updateCamera() {
       const c = this.cam;
       const [a, b] = this.f;
-      let tx = (a.x + b.x) / 2;
       const dist = Math.abs(a.x - b.x);
-      let tz = U.clamp(1150 / (dist + 520), 0.74, 1.12);
+      let fx = (a.x + b.x) / 2, fz = (a.zl + b.zl) / 2;
       const top = Math.min(a.y - a.height(), b.y - b.height());
-      let ty = Math.min(0, top + 260);
-      if (this.freeze && this.freeze.ult) { tx = this.freeze.f.x; tz = 1.45; ty = this.freeze.f.y; }
-      else if (this.phase === 'ko' || (this.phase === 'koWait' && this.pt < 30)) { const l = this.koInfo && this.koInfo.loser; if (l) { tx = U.lerp(tx, l.x, 0.6); tz = Math.min(1.3, tz + 0.25); } }
-      else if (this.phase === 'matchEnd' && this.winner) { tx = this.winner.x; tz = 1.35; }
-      else if (this.phase === 'intro') { tz = 1.05; }
-      const k = frozen ? 0.12 : 0.1;
-      c.zoom = U.lerp(c.zoom, tz, k);
-      c.x = U.lerp(c.x, tx, k * 1.4);
-      c.y = U.lerp(c.y, ty, 0.08);
+      let fy = 128 + Math.max(0, -(top + 250)) * 0.45;
+      let D = U.clamp(610 + dist * 0.74, 800, 1400), az = 0.32, el = 0.12, k = 0.1;
+      const fzs = this.freeze;
+      if (fzs) {
+        const f = fzs.f;
+        fx = f.x + f.facing * 30; fz = f.zl; fy = -f.y + f.hover() + f.height() * 0.62;
+        D = fzs.ult ? 420 : 500; az = -f.facing * 0.95; el = 0.05; k = 0.24;
+      } else if (this.phase === 'ko' || (this.phase === 'koWait' && this.pt < 40)) {
+        const l = this.koInfo && this.koInfo.loser;
+        if (l) { fx = U.lerp(fx, l.x, 0.6); fz = U.lerp(fz, l.zl, 0.6); D = Math.max(640, D * 0.72); az = 0.32 + this.pt * 0.006; }
+      } else if (this.phase === 'matchEnd' && this.winner) {
+        const w = this.winner;
+        fx = w.x; fz = w.zl; fy = w.hover() + w.height() * 0.6; D = 540; el = 0.07; k = 0.06;
+        az = -w.facing * (0.8 + Math.sin(this.pt * 0.012) * 0.35);
+      } else if (this.phase === 'intro') {
+        const t = U.clamp(this.pt / 100, 0, 1), e = 1 - (1 - t) * (1 - t);
+        az = 0.32 + (1 - e) * 2.4; D += (1 - e) * 520; el = 0.12 + (1 - e) * 0.32; k = 0.25;
+      }
+      const ce = Math.cos(el);
+      const P = this.world(fx - Math.sin(az) * D * ce, fz + Math.cos(az) * D * ce), T = this.world(fx, fz);
+      const py = fy + 10 + D * Math.sin(el);
+      if (!c.set) { c.set = true; k = 1; }
+      const kt = Math.min(1, k * 1.3);
+      c.px = U.lerp(c.px, P[0], k); c.py = U.lerp(c.py, py, k); c.pz = U.lerp(c.pz, P[1], k);
+      c.tx = U.lerp(c.tx, T[0], kt); c.ty = U.lerp(c.ty, fy, kt); c.tz = U.lerp(c.tz, T[1], kt);
       if (c.shake > 0) { c.sx = U.rand(-c.shake, c.shake); c.sy = U.rand(-c.shake, c.shake) * 0.7; c.shake *= 0.86; if (c.shake < 0.5) c.shake = 0; }
       else { c.sx = c.sy = 0; }
     }
@@ -652,44 +766,31 @@
     }
 
     // =============================================================== RENDU
+    // La scène (arène, combattants) est rendue en 3D ; projectiles, effets et interface sont dessinés
+    // par-dessus en 2D, projetés à leur place dans l'arène.
     render(ctx, W, H) {
-      const c = this.cam;
-      const z = c.zoom;
-      c.baseGroundY = H * 0.84;
-      const groundY = c.baseGroundY - c.y * z + c.sy;
-      c.groundY = groundY;
-      const camX = c.x - c.sx / z;
-      // Décor
-      this.stage.drawBack(ctx, { x: camX, zoom: z, groundY, baseGroundY: c.baseGroundY }, W, H);
-      // Monde
-      ctx.save();
-      ctx.translate(W / 2, groundY);
-      ctx.scale(z, z);
-      ctx.translate(-camX, 0);
-      const t = this.time;
-      for (const f of this.f) f.renderShadow(ctx);
-      for (const e of this.entities) if (e.bg && e.draw) e.draw(ctx, t);
-      // Assombrissement pendant un super
-      const fz = this.freeze;
-      const order = this.drawOrder();
-      if (fz) {
-        for (const f of order) if (f !== fz.f) f.render(ctx);
-        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = 'rgba(5,0,15,' + Math.min(0.7, fz.t / 10 * 0.7) + ')';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.restore();
-        this.renderSuperLines(ctx, fz);
-        fz.f.render(ctx);
+      const base = ctx.getTransform ? ctx.getTransform().a : 1;
+      const V = C.R3 ? C.R3.renderBattle(this, W, H, base) : null;
+      ctx.clearRect(0, 0, W, H);
+      const t = this.time, fz = this.freeze;
+      if (V) {
+        if (fz && V.at(ctx, fz.f.x, fz.f.y, fz.f.zl)) this.renderSuperLines(ctx, fz);
+        for (const f of this.f) if (f.shieldFx && V.at(ctx, f.x, f.y, f.zl)) this.renderShield(ctx, f);
+        for (const e of this.entities) {
+          if (!e.draw || e.dead) continue;
+          if (e.selfView) e.draw(ctx, t, V);
+          else if (V.at(ctx, e.x != null ? e.x : 0, e.y != null ? e.y : 0, e.zl || 0)) e.draw(ctx, t, V);
+        }
+        FX.draw(ctx, V);
+        if (this.debugBoxes && V.at(ctx, (this.f[0].x + this.f[1].x) / 2, -100, 0)) this.renderBoxes(ctx);
+        FX.drawTexts(ctx, V);
+        V.reset(ctx);
       } else {
-        for (const f of order) f.render(ctx);
+        ctx.fillStyle = '#0b0718'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.font = '26px "Russo One", sans-serif';
+        ctx.fillText('Affichage 3D indisponible sur cet appareil (WebGL).', W / 2, H / 2);
       }
-      for (const f of this.f) if (f.shieldFx) this.renderShield(ctx, f);
-      for (const e of this.entities) if (!e.bg && e.draw) e.draw(ctx, t);
-      FX.draw(ctx);
-      if (this.debugBoxes) this.renderBoxes(ctx);
-      FX.drawTexts(ctx);
-      ctx.restore();
-      this.stage.drawAmbient(ctx, c, W, H);
+      this.stage.drawAmbient(ctx, this.cam, W, H);
       // Flash plein écran
       if (this.flashFx) {
         ctx.fillStyle = U.rgba(this.flashFx.color, Math.max(0, this.flashFx.a));
@@ -697,14 +798,6 @@
       }
       if (fz) this.renderCutIn(ctx, fz, W, H);
       if (this.mode !== 'demo') this.renderHUD(ctx, W, H);
-    }
-
-    drawOrder() {
-      const [a, b] = this.f;
-      // Celui qui attaque est dessiné au premier plan
-      if (b.state === 'move' && a.state !== 'move') return [a, b];
-      if (a.state === 'move' && b.state !== 'move') return [b, a];
-      return this.frame % 2 ? [a, b] : [a, b];
     }
 
     renderShield(ctx, f) {

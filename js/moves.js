@@ -39,7 +39,7 @@
         hits: [hit({ f0: 4, f1: 8, box: [18, -55, 100, 45], dmg: 25, stun: 15, bstun: 11, kb: [3, 0], level: 'low' })],
         cancel: { from: 4, to: 14, on: 'contact', into: ['DL', 'L1', 'special', 'super'] } },
       DH: { name: 'Balayette', kind: 'normal', low: true, anim: [['crouch', 6], ['sweep', 4], ['sweep', 6], ['crouch', 14]], whiffSfx: 'whoosh_heavy',
-        hits: [hit({ f0: 8, f1: 13, box: [10, -42, 138, 42], dmg: 55, stun: 20, kb: [5, -7], kd: true, launch: true, level: 'low', sfx: 'hit_heavy', hitstop: 9 })] },
+        hits: [hit({ f0: 8, f1: 13, box: [10, -42, 138, 42], dmg: 55, stun: 20, kb: [5, -7], kd: true, launch: true, level: 'low', sfx: 'hit_heavy', hitstop: 9, arc: true })] },
       AL: { name: 'Coup de pied sauté', kind: 'normal', air: 'only', anim: [['air_kick', 4], ['air_kick', 10], ['fall', 8]], whiffSfx: 'whoosh',
         hits: [hit({ f0: 4, f1: 14, box: [10, -120, 88, 70], dmg: 36, stun: 17, kb: [5, 0], level: 'overhead' })],
         cancel: { from: 5, to: 20, on: 'contact', into: ['AH', 'special', 'super'] } },
@@ -67,7 +67,7 @@
         hits: [hit({ f0: 4, f1: 8, box: [20, -60, 135, 42], dmg: 27, stun: 15, bstun: 11, kb: [4, 0], level: 'low', sfx: 'hit_slash', spark: 'slash' })],
         cancel: { from: 4, to: 15, on: 'contact', into: ['DL', 'L1', 'special', 'super'] } },
       DH: { name: 'Fauchage', kind: 'normal', low: true, anim: [['b_sweep_r', 7], ['b_sweep', 4], ['b_sweep', 6], ['crouch', 15]], whiffSfx: 'slash',
-        hits: [hit({ f0: 9, f1: 14, box: [10, -48, 160, 46], dmg: 58, stun: 20, kb: [5, -7], kd: true, launch: true, level: 'low', sfx: 'hit_slash', spark: 'slash', hitstop: 9 })] },
+        hits: [hit({ f0: 9, f1: 14, box: [10, -48, 160, 46], dmg: 58, stun: 20, kb: [5, -7], kd: true, launch: true, level: 'low', sfx: 'hit_slash', spark: 'slash', hitstop: 9, arc: true })] },
       AL: { name: 'Taille aérienne', kind: 'normal', air: 'only', anim: [['b_air_r', 4], ['b_air', 3], ['b_air', 8], ['fall', 8]], whiffSfx: 'slash',
         hits: [hit({ f0: 5, f1: 14, box: [0, -150, 122, 115], dmg: 36, stun: 17, kb: [5, 0], level: 'overhead', sfx: 'hit_slash', spark: 'slash' })],
         cancel: { from: 6, to: 20, on: 'contact', into: ['AH', 'special', 'super'] } },
@@ -110,8 +110,12 @@
     if (o.randomY) vy += U.rand(-o.randomY, o.randomY);
     const color = o.fixedColor || (f.awakened > 0 && f.ch.awakenAura && !o.noAwake ? f.ch.awakenAura : (o.color || f.ch.aura));
     const scale = (o.scale || 1) * (f.awakened > 0 && !o.noAwake ? 1.25 : 1);
+    // 3D : le projectile part dans la direction visée par le tireur (pas forcément sur l'axe)
+    const ae = f.aimErr ? f.aimErr() : 0;
+    const vzl = vx * Math.sin(ae);
+    vx *= Math.cos(ae);
     const pr = new (Proj().Projectile)(b, f, {
-      kind: o.vis || 'ki', x: p[0] + f.facing * (o.ox || 8), y: o.groundY != null ? o.groundY : p[1] + (o.oy || 0), vx, vy,
+      kind: o.vis || 'ki', x: p[0] + f.facing * (o.ox || 8), y: o.groundY != null ? o.groundY : p[1] + (o.oy || 0), vx, vy, vzl, zl: f.zl || 0, track: o.track,
       r: o.r || 16, w: o.w, h: o.h, life: o.life || 120, hits: o.hits || 1, interval: o.interval || 8,
       grav: o.grav || 0, ground: o.ground, homing: o.homing, wave: o.wave, explode: o.explode, pierce: o.pierce, trail: o.trail,
       boomerang: o.boomerang ? { dist: o.boomerang, speed: o.speed * 1.15, x0: p[0] } : null,
@@ -302,6 +306,7 @@
       name: o.name, kind: o.kind || 'special', air: o.air || false, cost: o.cost || 0, cine: o.cine,
       anim: o.anim || [[o.ready || 'cast1_r', st], [o.pose || 'cast1', dur], ['idle', rec]],
       frames: st + dur + rec,
+      track: 0.12, trackLate: 0.028,
       noGrav: o.air ? [0, st + dur] : null,
       sfx: [[st, o.sfx || 'fire']],
       invuln: o.invuln,
@@ -550,6 +555,7 @@
       name: o.name, kind: o.kind || 'ultimate', cost: o.cost || 300, cine: true, air: !!o.air,
       anim: [[o.ready || 'cast_r', st], [o.pose || 'cast', dur], ['idle', 20]],
       frames: st + dur + 20, invuln: [0, st + dur], aura: o.aura || true,
+      track: 0.2, trackLate: 0.011,
       noGrav: o.air ? [0, st + dur] : null,
       sfx: [[st, 'beam'], [st + 30, 'beam']],
       onFrame: (f, b, fr) => {
@@ -580,15 +586,12 @@
       this.alpha = alpha; this.tint = tint || '#ffffff';
       this.life = this.max = life || 12; this.dead = false; this.awake = f.awakened > 0;
       this.shadow = f.shadowTint;
-      this.bg = true;
+      this.zl = f.zl || 0;
+      this.isGhost = true;
     }
     hitbox() { return null; }
     update() { if (--this.life <= 0) this.dead = true; }
-    draw(ctx, t) {
-      ctx.save(); ctx.translate(this.x, this.y);
-      C.Rig.draw(ctx, this.look, this.pose, { facing: this.facing, time: t, alpha: this.alpha * (this.life / this.max), flash: 0.55, shadowTint: this.tint, awakened: this.awake });
-      ctx.restore();
-    }
+    // (silhouette lumineuse dessinée en 3D par le moteur de rendu)
   }
   C.Afterimage = Afterimage;
 
@@ -774,10 +777,10 @@
       S: {
         name: 'Renforts', kind: 'super', cost: 100, cine: true, anim: [['taunt', 20], ['idle', 16]], frames: 36, invuln: [0, 20],
         spawn: [{ f: 14, fn: (f, b) => {
-          [80, 170].forEach((d, i) => b.addEntity(new (Proj().Summon)(b, f, { x: U.clamp(f.x - f.facing * d, b.stage.left + 40, b.stage.right - 40), life: 170, every: 16 + i * 3, costume: f.cfg.costume || 0,
+          [80, 150].forEach((d, i) => b.addEntity(new (Proj().Summon)(b, f, { x: U.clamp(f.x - f.facing * d, b.stage.left + 40, b.stage.right - 40), zl: i ? 120 : -120, life: 170, every: 16 + i * 3, costume: f.cfg.costume || 0,
             fire: (s) => {
               play('blaster');
-              b.addEntity(new (Proj().Projectile)(b, f, { kind: 'laser', x: s.x + s.facing * 60, y: -128, vx: s.facing * 21, vy: U.rand(-1.4, 1.4), r: 9, w: 40, h: 16, life: 100, color: '#ff3030', trail: false, hit: { dmg: 16, stun: 16, kb: [4, 0], chip: 0.15 } }));
+              b.addEntity(new (Proj().Projectile)(b, f, { kind: 'laser', x: s.x + s.facing * 60, zl: s.zl, track: 5, y: -128, vx: s.facing * 21, vy: U.rand(-1.4, 1.4), r: 9, w: 40, h: 16, life: 100, color: '#ff3030', trail: false, hit: { dmg: 16, stun: 16, kb: [4, 0], chip: 0.15 } }));
             } })));
         } }],
         ai: { role: 'zone', min: 0, max: 9999 }
@@ -938,13 +941,13 @@
     }
     if (style === 'creature') {
       N.H = { name: 'Coup de Queue', kind: 'normal', anim: [['hkick_r', 8], ['spin1', 1], ['spin2', 14, 'lin'], ['idle', 12]], whiffSfx: 'whoosh_heavy',
-        hits: [hit({ f0: 10, f1: 20, box: [-120, -150, 240, 100], dmg: 78, stun: 22, kb: [13, -3], sfx: 'hit_heavy', hitstop: 11, spark: 'big' })], cancel: { from: 12, to: 30, on: 'hit', into: ['special', 'super'] } };
+        hits: [hit({ f0: 10, f1: 20, box: [-120, -150, 240, 100], dmg: 78, stun: 22, kb: [13, -3], sfx: 'hit_heavy', hitstop: 11, spark: 'big', arc: true })], cancel: { from: 12, to: 30, on: 'hit', into: ['special', 'super'] } };
       N.DH = { name: 'Fouet Caudal', kind: 'normal', low: true, anim: [['crouch', 6], ['sweep', 4], ['sweep', 8], ['crouch', 14]], whiffSfx: 'whoosh_heavy',
-        hits: [hit({ f0: 8, f1: 15, box: [-60, -45, 210, 45], dmg: 58, stun: 20, kb: [5, -7], kd: true, launch: true, level: 'low', sfx: 'hit_heavy', hitstop: 9 })] };
+        hits: [hit({ f0: 8, f1: 15, box: [-60, -45, 210, 45], dmg: 58, stun: 20, kb: [5, -7], kd: true, launch: true, level: 'low', sfx: 'hit_heavy', hitstop: 9, arc: true })] };
     }
     if (style === 'tiny') {
       N.H = { name: 'Fouet de Queue', kind: 'normal', anim: [['kick_r', 5], ['spin1', 1], ['spin2', 12, 'lin'], ['idle', 10]], whiffSfx: 'whoosh',
-        hits: [hit({ f0: 7, f1: 17, box: [-110, -190, 220, 150], dmg: 62, stun: 20, kb: [11, -2], sfx: 'hit_heavy', hitstop: 9 })], cancel: { from: 9, to: 26, on: 'hit', into: ['special', 'super'] } };
+        hits: [hit({ f0: 7, f1: 17, box: [-110, -190, 220, 150], dmg: 62, stun: 20, kb: [11, -2], sfx: 'hit_heavy', hitstop: 9, arc: true })], cancel: { from: 9, to: 26, on: 'hit', into: ['special', 'super'] } };
       ['L1', 'L2', 'L3'].forEach((k) => tune(N[k], { reach: 0.85, y: -10 }));
     }
     if (style === 'wand' || style === 'caster') {
@@ -986,8 +989,8 @@
 
   // Liste des coups lisible (écran « Liste des coups »)
   const INPUT_NAMES = {
-    L1: 'Léger', L2: 'Léger ×2', L3: 'Léger ×3', H: 'Lourd', UH: '↑ + Lourd', DL: '↓ + Léger', DH: '↓ + Lourd', AL: 'En l\'air : Léger', AH: 'En l\'air : Lourd',
-    GRAB: 'Saisie (près)', CHARGE: 'ULTRA maintenu', N: 'Spécial', F: '→ + Spécial', U: '↑ + Spécial', D: '↓ + Spécial', S: 'ULTRA (1 barre)', S2: 'ULTRA (1 barre, éveillé)', X: 'ULTRA (3 barres)'
+    L1: 'Léger', L2: 'Léger ×2', L3: 'Léger ×3', H: 'Lourd', UH: 'Côté + Lourd', DL: 'Arrière + Léger', DH: 'Arrière + Lourd', AL: 'En l\'air : Léger', AH: 'En l\'air : Lourd',
+    GRAB: 'Saisie (près)', CHARGE: 'ULTRA maintenu', N: 'Spécial', F: 'Avant + Spécial', U: 'Côté + Spécial', D: 'Arrière + Spécial', S: 'ULTRA (1 barre)', S2: 'ULTRA (1 barre, éveillé)', X: 'ULTRA (3 barres)'
   };
   function moveList(charId) {
     const fake = { ch: C.Roster.get(charId) };

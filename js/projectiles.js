@@ -1,4 +1,6 @@
-/* Choc des Légendes — projectiles, rayons, piliers, invocations */
+/* Choc des Légendes — projectiles, rayons, piliers, invocations.
+   En plus de x (le long de l'axe de combat) et y (hauteur), chaque entité a un décalage latéral zl :
+   elle continue tout droit quand les combattants tournent, ce qui permet de l'esquiver sur le côté. */
 (function (C) {
   'use strict';
   const U = C.U, FX = C.FX;
@@ -16,6 +18,9 @@
       this.kind = o.kind || 'ki';
       this.x = o.x; this.y = o.y;
       this.vx = o.vx || 0; this.vy = o.vy || 0;
+      this.zl = o.zl || 0; this.vzl = o.vzl || 0;
+      // léger guidage latéral : un simple pas de côté ne suffit pas toujours, il faut vraiment se décaler
+      this.track = o.track != null ? o.track : 2.1;
       this.r = o.r || 16;
       this.w = o.w || this.r * 1.6; this.h = o.h || this.r * 1.6;
       this.life = o.life || 120; this.age = 0;
@@ -27,6 +32,7 @@
       this.color = o.color || owner.ch.aura || '#6cf';
       this.color2 = o.color2 || '#ffffff';
       this.strength = o.strength != null ? o.strength : this.hitsLeft;
+      this.latR = o.latR != null ? o.latR : U.clamp(Math.max(this.r, Math.min(this.w, this.h) * 0.5), 14, 60);
       this.ground = o.ground || false;
       this.homing = o.homing || 0;
       this.boomerang = o.boomerang || null;
@@ -63,11 +69,18 @@
           const d = Math.hypot(dx, dy) || 1;
           this.vx = U.lerp(this.vx, dx / d * b.speed, 0.15);
           this.vy = U.lerp(this.vy, dy / d * b.speed, 0.15);
+          this.zl = U.lerp(this.zl, ow.zl, 0.15);
           if (d < 40) { this.dead = true; ow.weaponAway = false; }
         }
       }
       this.vy += this.grav;
       this.x += this.vx; this.y += this.vy;
+      this.zl += this.vzl;
+      if (this.track && !(this.boomerang && this.boomerang.back)) {
+        const tg = this.battle.opponentOf(this.owner);
+        if ((tg.x - this.x) * this.vx > 0) this.zl += U.clamp(tg.zl - this.zl, -this.track, this.track);
+        this.vzl *= 0.94;
+      }
       if (this.wave) this.y = this.baseY + Math.sin(this.age * 0.12) * this.wave + (this.vy ? 0 : 0);
       if (this.ground) this.y = -this.h / 2;
       this.spin += 0.45;
@@ -92,7 +105,7 @@
       if (this.boomerang) this.owner.weaponAway = false;
       if (explode && this.explode) {
         const e = this.explode;
-        this.battle.addEntity(new Area(this.battle, this.owner, { x: this.x, y: Math.min(this.y, -e.r * 0.4), r: e.r, hit: e.hit, color: e.color || '#ff9a3c' }));
+        this.battle.addEntity(new Area(this.battle, this.owner, { x: this.x, zl: this.zl, y: Math.min(this.y, -e.r * 0.4), r: e.r, hit: e.hit, color: e.color || '#ff9a3c' }));
         C.Audio.play('explosion');
         this.battle.shake(8);
       } else if (!explode) {
@@ -116,6 +129,7 @@
     reflect(newOwner) {
       this.owner = newOwner;
       this.vx = -this.vx * 1.15; this.vy = -this.vy * 0.5;
+      this.vzl = -this.vzl;
       this.dir = -this.dir;
       if (this.boomerang) { this.boomerang = null; this.life = 80; }
       this.hit = Object.assign({}, this.hit);
@@ -371,6 +385,8 @@
     constructor(battle, owner, o) {
       this.battle = battle; this.owner = owner;
       this.isBeam = true;
+      this.selfView = true;   // se place lui-même à l'écran (segment entre deux points de l'arène)
+      this.latR = (o.width || 50) * 0.5;
       this.joint = o.joint || 'hand1';
       this.dy = o.dy || 0;
       this.maxLen = o.len || 1400;
@@ -425,14 +441,19 @@
       this.cool = this.interval;
       if (this.finalHit && this.life <= this.interval + 2) this.useFinal = true;
     }
+    // Le rayon part dans la direction visée par son lanceur : distance latérale à la cible
+    lateral(t) { return Math.abs(Math.abs(t.x - this.origin[0]) * Math.sin(this.owner.aimErr())); }
     currentHit() { return (this.finalHit && this.life <= this.interval * 2) ? this.finalHit : this.hit; }
-    draw(ctx) {
+    draw(ctx, t, V) {
       const k = this.life < 10 ? this.life / 10 : Math.min(1, this.age / 6);
       const w = this.width * k * (1 + Math.sin(this.age * 0.9) * 0.08);
       const x0 = this.origin[0], y0 = this.origin[1];
+      const L = Math.max(1, this.len);
       ctx.save();
-      ctx.translate(x0, y0); ctx.rotate(this.dir > 0 ? this.angle : PI - this.angle);
-      const L = this.len;
+      if (V) {
+        const o = this.owner, e = o.aimErr(), ca = Math.cos(this.angle) * L * this.dir;
+        if (!V.seg(ctx, x0, y0, o.zl, x0 + ca * Math.cos(e), y0 + Math.sin(this.angle) * L, o.zl + ca * Math.sin(e), L)) { ctx.restore(); return; }
+      } else { ctx.translate(x0, y0); ctx.rotate(this.dir > 0 ? this.angle : PI - this.angle); }
       ctx.globalCompositeOperation = 'lighter';
       if (this.style === 'lightning') {
         for (let i = 0; i < 3; i++) {
@@ -468,6 +489,7 @@
     constructor(battle, owner, o) {
       this.battle = battle; this.owner = owner;
       this.x = o.x; this.width = o.width || 90;
+      this.zl = o.zl || 0; this.latR = this.width * 0.5;
       this.delay = o.delay || 20; this.life = this.max = o.life || 30;
       this.interval = o.interval || 6; this.cool = 0;
       this.hit = baseHit(Object.assign({ stun: 14, kb: [2, -4], launch: true, hitstop: 4 }, o.hit));
@@ -521,6 +543,7 @@
     constructor(battle, owner, o) {
       this.battle = battle; this.owner = owner;
       this.x = o.x; this.y = o.y; this.r = o.r || 60;
+      this.zl = o.zl || 0; this.latR = this.r;
       this.life = o.life || 6; this.hits = o.hits || 1; this.interval = o.interval || 6; this.cool = 0;
       this.hit = baseHit(Object.assign({ dmg: 60, kb: [8, -8], launch: true, hitstop: 8, sfx: 'hit_heavy' }, o.hit));
       this.dead = false; this.strength = 0;
@@ -538,7 +561,7 @@
   class Summon {
     constructor(battle, owner, o) {
       this.battle = battle; this.owner = owner;
-      this.x = o.x; this.y = 0; this.facing = owner.facing;
+      this.x = o.x; this.y = 0; this.zl = o.zl || 0; this.facing = owner.facing;
       this.life = o.life || 150; this.age = 0; this.dead = false;
       this.every = o.every || 22;
       this.look = C.Roster.look(o.char || 'tk7', o.costume || 0);
@@ -554,13 +577,7 @@
       if (this.age > 18 && this.age % this.every === 0 && this.life > 20) this.fire(this);
       if (--this.life <= 0) { this.dead = true; FX.smoke(this.x, -60, 40, '#ddd', 30); }
     }
-    draw(ctx, t) {
-      ctx.save();
-      ctx.translate(this.x, 0);
-      const a = Math.min(1, this.age / 10, this.life / 10);
-      C.Rig.draw(ctx, this.look, C.Poses.get(this.age % this.every < 6 && this.age > 18 ? 'cast1' : 'idle', this.look), { facing: this.facing, time: t, alpha: a, scale: 0.88 });
-      ctx.restore();
-    }
+    // (dessiné en 3D par le moteur de rendu)
   }
 
   // -------------------------------------------------------------- Vaisseau (frappe aérienne)
@@ -568,6 +585,7 @@
     constructor(battle, owner, o) {
       this.battle = battle; this.owner = owner;
       this.dir = o.dir; this.x = o.x; this.y = o.y; this.vx = o.dir * 16;
+      this.zl = 0; this.vzl = 0; this.isShip = true; this.latR = 0;
       this.dropEvery = o.dropEvery || 9; this.age = 0; this.dead = false;
       this.drop = o.drop;
       C.Audio.play('beam');

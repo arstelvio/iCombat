@@ -3,8 +3,8 @@
   'use strict';
   const U = C.U;
   const STEP = 1 / 60;
-  let canvas, ctx, W = 1280, H = 720, scale = 1;
-  let demo = null, demoTimer = 0;
+  let canvas, canvas3d, ctx, W = 1280, H = 720, scale = 1;
+  let demo = null, demoTimer = 0, demoDraw = false;
   let last = 0, acc = 0;
 
   C.touchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window);
@@ -33,6 +33,10 @@
     const dpr = Math.min(window.devicePixelRatio || 1, cap);
     canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
     canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
+    if (canvas3d) {
+      canvas3d.style.width = cw + 'px'; canvas3d.style.height = ch + 'px';
+      if (C.R3) C.R3.resize(canvas.width, canvas.height);
+    }
     H = 720;
     W = Math.round(H * Math.max(1, cw / Math.max(1, ch)));
     scale = canvas.height / H;
@@ -83,7 +87,8 @@
     if (b) {
       b.render(ctx, W, H);
       if (!b.paused && !b.result) C.Input.drawTouch(ctx, W, H, b);
-    } else if (demo) {
+    } else if (demo && (demoDraw = !demoDraw)) {
+      // combat de démonstration derrière les menus : une image sur deux suffit (économie de batterie)
       demo.render(ctx, W, H);
       ctx.fillStyle = 'rgba(8,4,22,0.62)';
       ctx.fillRect(0, 0, W, H);
@@ -162,7 +167,8 @@
   function boot() {
     C.Store.init();
     canvas = document.getElementById('game');
-    ctx = canvas.getContext('2d', { alpha: false });
+    canvas3d = document.getElementById('game3d');
+    ctx = canvas.getContext('2d');
     resize();
     window.addEventListener('resize', resize);
     window.addEventListener('orientationchange', () => setTimeout(resize, 200));

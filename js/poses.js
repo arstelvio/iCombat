@@ -60,7 +60,7 @@
     guardcrush: { torso: -0.45, head: -0.5, ua1: 2.0, la1: 0.6, ua2: 1.6, la2: 0.7, th1: 0.4, sh1: -0.4, th2: -0.5, sh2: -0.2 },
     grabbed: { torso: -0.2, head: -0.5, ua1: 1.9, la1: 1.3, ua2: 1.7, la2: 1.4, th1: 0.15, sh1: -0.3, th2: -0.15, sh2: -0.4, plant: false },
     spin1: { rot: 0, torso: 0.1, ua1: 1.57, la1: 0.0, ua2: -1.57, la2: 0.0, th1: 0.2, sh1: -0.3, th2: -0.2, sh2: -0.3, plant: false },
-    spin2: { rot: Math.PI * 2, torso: 0.1, ua1: 1.57, la1: 0.0, ua2: -1.57, la2: 0.0, th1: 0.2, sh1: -0.3, th2: -0.2, sh2: -0.3, plant: false },
+    spin2: { yaw: Math.PI * 2, torso: 0.1, ua1: 1.57, la1: 0.0, ua2: -1.57, la2: 0.0, th1: 0.2, sh1: -0.3, th2: -0.2, sh2: -0.3, plant: false },
     flip1: m(LEGS_TUCK, { rot: 0, torso: 0.3, ua1: 1.2, la1: 1.0, ua2: 1.0, la2: 1.0, plant: false }),
     flip2: m(LEGS_TUCK, { rot: -Math.PI * 2, torso: 0.3, ua1: 1.2, la1: 1.0, ua2: 1.0, la2: 1.0, plant: false }),
     roll1: m(LEGS_TUCK, { rot: 0, torso: 0.9, head: 0.5, ua1: 1.0, la1: 1.5, ua2: 0.8, la2: 1.5, plant: false, y: 30 }),

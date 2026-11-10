@@ -7,7 +7,7 @@
  * se remplit au fil des chargements.
  */
 'use strict';
-const VERSION = '03fc8b9bae38';
+const VERSION = '3fca7d841426';
 const ASSETS = [
   "./",
   "css/style.css",
@@ -32,6 +32,7 @@ const ASSETS = [
   "js/poses.js",
   "js/projectiles.js",
   "js/pwa.js",
+  "js/render3d.js",
   "js/rig.js",
   "js/roster.js",
   "js/school.js",
@@ -41,6 +42,7 @@ const ASSETS = [
   "js/ui.js",
   "js/util.js",
   "js/voice.js",
+  "lib/three.min.js",
   "manifest.webmanifest"
 ];
 const CACHE = 'cdl-' + VERSION;

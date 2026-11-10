@@ -41,13 +41,13 @@
       switch (id) {
         case 'L1': case 'L2': case 'L3': case 'AL': p.btn = 'a'; break;
         case 'H': case 'AH': p.btn = 'b'; break;
-        case 'UH': p.btn = 'b'; p.dir = 'u'; break;
-        case 'DH': p.btn = 'b'; p.dir = 'd'; break;
-        case 'DL': p.btn = 'a'; p.dir = 'd'; break;
+        case 'UH': p.btn = 'b'; p.dir = 'mu'; break;
+        case 'DH': p.btn = 'b'; p.dir = 'md'; break;
+        case 'DL': p.btn = 'a'; p.dir = 'md'; break;
         case 'N': p.btn = 'c'; break;
         case 'F': p.btn = 'c'; p.dir = fwd; break;
-        case 'U': p.btn = 'c'; p.dir = 'u'; break;
-        case 'D': p.btn = 'c'; p.dir = 'd'; break;
+        case 'U': p.btn = 'c'; p.dir = 'mu'; break;
+        case 'D': p.btn = 'c'; p.dir = 'md'; break;
         case 'S': case 'S2': p.btn = 's'; p.dir = f.meter >= 300 ? 'd' : null; break;
         case 'X': p.btn = 's'; break;
         case 'GRAB': p.btn = 't'; break;
@@ -103,6 +103,7 @@
       this.t++;
       const out = this.out;
       out.l = out.r = out.u = out.d = out.a = out.b = out.c = out.g = out.s = out.t = 0; out.dash = 0;
+      out.zi = 0; out.mu = 0; out.md = 0; out.side = 0;
       if (b.phase !== 'fight') { this.plan = null; return out; }
       const dist = Math.abs(o.x - f.x);
       const dirTo = o.x > f.x ? 1 : -1;
@@ -163,6 +164,9 @@
           }
           if (d === 'parry') { if (th.until <= 3 || th.type === 'proj') { out.g = 1; this.threatDecision = 'block'; } else out[backKey] = 1; return out; }
           if (d === 'jump') { out.u = 1; out[fwdKey] = 1; this.threatDecision = 'done'; return out; }
+          // 3D : pas de côté pour sortir de la trajectoire, puis on continue à se décaler
+          if (d === 'side') { this.sideSign = Math.random() < 0.5 ? 1 : -1; out.side = this.sideSign; this.threatDecision = 'strafe'; return out; }
+          if (d === 'strafe') { out.zi = this.sideSign; return out; }
           if (d && d.length <= 2 && f.moves[d]) { this.threatDecision = 'done'; this.press(d, f); return out; }
           if (d === 'anti') {
             const anti = this.role(f, 'anti');
@@ -191,6 +195,7 @@
         // Mouvement maintenu
         if (this.hold.until > this.t) {
           if (this.hold.dir) out[this.hold.dir > 0 ? fwdKey : backKey] = 1;
+          if (this.hold.side) out.zi = this.hold.side;
           if (this.hold.down) out.d = 1;
           if (this.hold.guard) { out.g = 1; out[backKey] = 1; }
         }
@@ -211,6 +216,7 @@
       if (th.type === 'beam') return f.onGround ? (Math.random() < P.block + 0.1 ? 'block' : 'jump') : null;
       if (th.type === 'proj') {
         const r = Math.random();
+        if (f.onGround && th.until > 7 && Math.random() < P.anti * 0.45) return 'side';
         const refl = this.role(f, 'reflect');
         if (refl.length && r < P.special * 0.3 && th.until > 6) return refl[0];
         if (r < P.parry * 1.5) return 'parry';
@@ -222,6 +228,7 @@
       const counters = this.role(f, 'counter');
       const r = Math.random();
       if (r < P.parry) return 'parry';
+      if (f.state === 'idle' && th.until > 5 && Math.random() < P.anti * 0.14) return 'side';
       if (counters.length && r < P.parry + P.special * 0.18 && th.until > 4) return counters[0];
       if (f.meter >= 300 && th.kind !== 'normal' && Math.random() < P.super * 0.15 && f.moves.X && f.moves.X.invuln) return 'X';
       if (Math.random() < P.block) return th.level === 'low' ? 'blocklow' : 'block';
@@ -284,7 +291,7 @@
         if (f.meter >= 100 && f.moves.S && f.moves.S.ai && f.moves.S.ai.role === 'zone' && Math.random() < P.super * 0.2) { this.press('S', f); return out; }
         if (Math.random() < P.aggro) {
           if (Math.random() < 0.35) { out.dash = 1; return out; }
-          this.hold = { dir: 1, until: this.t + 24 };
+          this.hold = { dir: 1, side: Math.random() < 0.35 ? U.choice([-1, 1]) : 0, until: this.t + 24 };
           return out;
         }
         this.hold = { dir: Math.random() < 0.5 ? 1 : 0, until: this.t + 20 };
@@ -292,6 +299,8 @@
       }
       // Distance moyenne
       if (Math.random() < P.jump) { out.u = 1; out[fwdKey] = 1; this.airPlan = true; return out; }
+      // 3D : tourne autour de l'adversaire pour chercher une ouverture
+      if (Math.random() < 0.16 + P.aggro * 0.08) { this.hold = { side: Math.random() < 0.5 ? 1 : -1, dir: U.choice([0, 0, 1]), until: this.t + U.randi(16, 38) }; return out; }
       const app = this.role(f, 'approach').concat(this.role(f, 'poke'));
       if (app.length && Math.random() < P.special) {
         const id = U.choice(app);

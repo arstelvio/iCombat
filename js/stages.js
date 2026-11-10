@@ -1,4 +1,5 @@
-/* Choc des Légendes — arènes : décors en parallaxe pré-rendus et ambiance animée */
+/* Choc des Légendes — arènes : définitions, décors peints (enroulés autour de l'arène 3D par render3d.js),
+   particules d'ambiance et vignettes des menus */
 (function (C) {
   'use strict';
   const U = C.U;
@@ -342,24 +343,7 @@
       if (d.far) mk(2800, d.far.bind(d), 0.18);
       if (d.mid) mk(3400, d.mid.bind(d), 0.5);
     }
-    drawBack(ctx, cam, W, H) {
-      const d = this.def;
-      this.t++;
-      // ciel
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, d.sky[0]); g.addColorStop(0.55, d.sky[1]); g.addColorStop(1, d.sky[2]);
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      const groundY = cam.groundY;
-      for (const L of this.layers) {
-        const zl = 1 + (cam.zoom - 1) * L.p;
-        const gy = U.lerp(cam.baseGroundY, groundY, L.p + 0.25);
-        const sx = W / 2 - (L.w / 2 + cam.x * L.p) * zl;
-        const sy = gy - GROUND * zl;
-        ctx.drawImage(L.cv, sx, sy, L.w * zl, 760 * zl);
-      }
-      this.drawFloor(ctx, cam, W, H);
-      if (d.torches || d.fires) this.drawFlames(ctx, cam, W, H);
-    }
+    // Sol (pour les vignettes des menus ; en combat, le sol est modélisé en 3D)
     drawFloor(ctx, cam, W, H) {
       const f = this.def.floor;
       const gy = cam.groundY;
@@ -412,19 +396,6 @@
       const lx = toX(this.left), rx = toX(this.right);
       if (lx > 0) ctx.fillRect(0, gy, lx, H - gy);
       if (rx < W) ctx.fillRect(rx, gy, W - rx, H - gy);
-    }
-    drawFlames(ctx, cam, W, H) {
-      const toX = (wx) => (wx - cam.x) * cam.zoom + W / 2;
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 8; i++) {
-        const wx = this.left - 200 + i * 360;
-        const x = toX(wx * 0.92);
-        const y = cam.groundY - 150 * cam.zoom;
-        const fl = 1 + Math.sin(this.t * 0.3 + i * 2) * 0.15;
-        ctx.drawImage(C.FX.glowSprite('#ff8a1a'), x - 40 * fl, y - 50 * fl, 80 * fl, 90 * fl);
-        ctx.drawImage(C.FX.glowSprite('#ffe08a'), x - 14, y - 16, 28, 34);
-      }
-      ctx.globalCompositeOperation = 'source-over';
     }
     // Particules d'ambiance en espace écran
     drawAmbient(ctx, cam, W, H) {

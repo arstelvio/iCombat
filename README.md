@@ -1,6 +1,6 @@
 # ⚔️ Choc des Légendes — version iPhone
 
-Jeu de combat 2D : 17 combattants, 10 arènes, mode Histoire, Arcade, Survie, Entraînement.
+Jeu de combat **en 3D** : 17 combattants, 10 arènes, mode Histoire, Arcade, Survie, Entraînement.
 Cette version se joue **sans installation** : pas d'App Store, pas de Mac, pas de compte Apple,
 pas de limite de 7 jours.
 
@@ -8,7 +8,16 @@ pas de limite de 7 jours.
 
 **https://arstelvio.github.io/iCombat/**
 
-## 🌟 Nouveautés pour les jeunes héros
+## 🧊 Nouveau : le jeu est en 3D
+
+- **Arènes et combattants en 3D**, style dessin animé, avec une caméra qui tourne autour du combat et plonge
+  en gros plan pour les attaques Ultimes.
+- **On se déplace librement** : pousse le joystick dans la direction où tu veux aller. Vers le haut ou le bas de
+  l'écran, tu tournes autour de ton adversaire et tu **esquives** ses attaques.
+- **Nouveau bouton SAUT**. Le joystick sur le côté ou en arrière change tes coups (lanceur, balayette…).
+- L'**École du Maître** t'apprend tout ça en 10 leçons.
+
+## 🌟 Pour les jeunes héros
 
 - **🦸 Mon héros** : crée ton combattant (pouvoir Ki, Magie, Ninja ou Lame, coiffure, couleurs, aura) et invente le nom de ton attaque ultime.
 - **🎓 École du Maître** : Maître Shen t'apprend à jouer, leçon par leçon, à voix haute.
@@ -52,3 +61,4 @@ Source : Deploy from a branch**, choisissez la branche du dépôt et le dossier 
 Le lien fonctionne une à deux minutes plus tard.
 
 Polices : Bangers et Russo One, sous licence SIL Open Font License (voir `fonts/`).
+Rendu 3D : [three.js](https://threejs.org), licence MIT (voir `lib/LICENSE-three.txt`).

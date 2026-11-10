@@ -1,4 +1,6 @@
-/* Choc des Légendes — commandes : tactile, clavier, manette */
+/* Choc des Légendes — commandes : tactile, clavier, manette.
+   Le déplacement est libre dans l'arène 3D : on pousse le joystick dans la direction où l'on veut aller
+   à l'écran (relatif à la caméra). Le saut est sur un bouton. */
 (function (C) {
   'use strict';
   const U = C.U;
@@ -6,14 +8,14 @@
   const keys = {};
   const tapped = {}; // touches enfoncées puis relâchées entre deux images : comptées une fois
   const KEYMAP_P1 = {
-    KeyW: 'u', KeyS: 'd', KeyA: 'l', KeyD: 'r',
     KeyJ: 'a', KeyK: 'b', KeyL: 'c', KeyI: 'g', KeyU: 't', KeyO: 's',
     Space: 'u', ShiftLeft: 'g', KeyN: 'a', KeyM: 'b', Comma: 'c'
   };
-  const ARROWS = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r' };
+  // Déplacement : [droite, bas] à l'écran (ZQSD / WASD, flèches)
+  const MOVE_P1 = { KeyW: [0, -1], KeyS: [0, 1], KeyA: [-1, 0], KeyD: [1, 0] };
+  const ARROWS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
   const KEYMAP_P2 = {
-    ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r',
-    Numpad1: 'a', Numpad2: 'b', Numpad3: 'c', Numpad4: 'g', Numpad5: 't', Numpad6: 's', Numpad0: 'g'
+    Numpad1: 'a', Numpad2: 'b', Numpad3: 'c', Numpad4: 'g', Numpad5: 't', Numpad6: 's', Numpad0: 'u', NumpadEnter: 'u'
   };
 
   const Input = {
@@ -37,7 +39,7 @@
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
   const down = (code) => { if (keys[code] || tapped[code]) { tapped[code] = false; return true; } return false; };
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
-  function gameKeys(code) { return KEYMAP_P1[code] || ARROWS[code] || KEYMAP_P2[code]; }
+  function gameKeys(code) { return KEYMAP_P1[code] || MOVE_P1[code] || ARROWS[code] || KEYMAP_P2[code]; }
 
   // ------------------------------------------------------------ manettes
   function readPad(index) {
@@ -47,8 +49,12 @@
     const b = (i) => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.5));
     const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
     const o = blank();
+    // l, r, u, d : pour les menus ; mx, my : déplacement dans l'arène ; jump : bouton de saut
     o.l = b(14) || ax < -0.45; o.r = b(15) || ax > 0.45;
-    o.u = b(12) || ay < -0.55 || b(0); o.d = b(13) || ay > 0.55;
+    o.u = b(12) || ay < -0.55; o.d = b(13) || ay > 0.55;
+    o.mx = (b(15) ? 1 : 0) - (b(14) ? 1 : 0) + (Math.abs(ax) > 0.25 ? ax : 0);
+    o.my = (b(13) ? 1 : 0) - (b(12) ? 1 : 0) + (Math.abs(ay) > 0.25 ? ay : 0);
+    o.jump = b(0);
     o.a = b(2); o.b = b(3); o.c = b(1);
     o.g = b(5) || b(6); o.t = b(4); o.s = b(7);
     o.start = b(9); o.select = b(8);
@@ -65,7 +71,7 @@
     const left = !!s.leftHanded;
     // Décalage si les boutons les plus au bord touchent une zone non sûre (encoche, coins arrondis)
     const sf = C.safe || { l: 0, r: 0, b: 0 };
-    const edge = 60 + 48 * k; // distance du bord de l'écran au bord des boutons extérieurs
+    const edge = 60 + 66 * k; // distance du bord de l'écran au bord des boutons extérieurs
     const shift = Math.max(0, (left ? sf.l : sf.r) + 8 - edge);
     const ax = left ? 60 + shift : W - 60 - shift, ay = H - 60;
     const mx = left ? -1 : 1;
@@ -74,12 +80,13 @@
       stickZone: left ? { x0: W * 0.55, x1: W } : { x0: 0, x1: W * 0.45 },
       stickR: 88 * k,
       buttons: [
-        btn('g', 'GARDE', 350, -52, 46),
-        btn('a', 'LÉGER', 236, -48, 56),
-        btn('b', 'LOURD', 104, -112, 56),
-        btn('c', 'SPÉCIAL', 238, -178, 56),
-        btn('t', 'SAISIE', 360, -176, 40),
-        btn('s', 'ULTRA', 104, -262, 48)
+        btn('g', 'GARDE', 372, -44, 44),
+        btn('a', 'LÉGER', 252, -58, 58),
+        btn('j', 'SAUT', 118, -48, 52),
+        btn('t', 'SAISIE', 384, -156, 38),
+        btn('c', 'SPÉCIAL', 268, -192, 54),
+        btn('b', 'LOURD', 138, -170, 56),
+        btn('s', 'ULTRA', 150, -298, 46)
       ],
       pause: { id: 'pause', x: W / 2, y: H - 46 - sf.b, r: 30 } // au-dessus de la barre d'accueil iOS
     };
@@ -161,52 +168,62 @@
   function touchState() {
     const T = Input.touch;
     const o = blank();
+    o.mx = 0; o.my = 0;
     if (T.stick) {
       const R = Input.layout.stickR;
       const dx = (T.stick.x - T.stick.ox) / R, dy = (T.stick.y - T.stick.oy) / R;
-      if (Math.hypot(dx, dy) > 0.28) {
-        if (dx < -0.38) o.l = 1;
-        if (dx > 0.38) o.r = 1;
-        if (dy < -0.5) o.u = 1;
-        if (dy > 0.45) o.d = 1;
-      }
+      if (Math.hypot(dx, dy) > 0.28) { o.mx = dx; o.my = dy; }
     }
     for (const k in T.buttons) if (T.buttons[k] > 0) o[k] = 1;
     // Un appui très bref (plus court qu'une image) est tout de même pris en compte
     for (const k in T.pending) { if (T.pending[k]) { o[k] = 1; T.pending[k] = false; } }
+    if (o.j) o.u = 1;   // bouton SAUT
     return o;
   }
 
   // ------------------------------------------------------------ contrôleurs
-  function merge(dst, src) { if (!src) return dst; for (const k in dst) if (src[k]) dst[k] = 1; return dst; }
+  const BTNS = ['a', 'b', 'c', 'g', 's', 't', 'u'];
+  // Rassemble clavier, manette et tactile ; convertit le joystick (relatif à la caméra) en
+  // déplacement le long de l'axe de combat (l / r) et sur le côté (zi)
+  function control(f, keymap, moves, padIndex, touch) {
+    const o = blank();
+    let sx = 0, sy = 0;
+    for (const code in keymap) if (down(code)) o[keymap[code]] = 1;
+    for (let i = 0; i < moves.length; i++) for (const code in moves[i]) if (keys[code]) { sx += moves[i][code][0]; sy += moves[i][code][1]; }
+    const p = readPad(padIndex);
+    if (p) {
+      for (let i = 0; i < 6; i++) if (p[BTNS[i]]) o[BTNS[i]] = 1;
+      if (p.jump) o.u = 1;
+      sx += p.mx; sy += p.my;
+    }
+    if (touch) {
+      const t = touchState();
+      for (let i = 0; i < BTNS.length; i++) if (t[BTNS[i]]) o[BTNS[i]] = 1;
+      sx += t.mx; sy += t.my;
+    }
+    const m = Math.hypot(sx, sy);
+    if (m > 0.3) {
+      const b = f && f.battle;
+      const v = b && b.stickToPlane ? b.stickToPlane(sx / m, sy / m) : [sx / m, sy / m];
+      if (v[0] > 0.38) o.r = 1; else if (v[0] < -0.38) o.l = 1;
+      if (v[1] > 0.38) o.zi = 1; else if (v[1] < -0.38) o.zi = -1;
+    }
+    return o;
+  }
 
   Input.p1 = {
     isCPU: false,
-    get() {
-      const o = blank();
-      for (const code in KEYMAP_P1) if (down(code)) o[KEYMAP_P1[code]] = 1;
-      if (!Input.twoPlayers) for (const code in ARROWS) if (down(code)) o[ARROWS[code]] = 1;
-      merge(o, readPad(0));
-      merge(o, touchState());
-      if (o.l && o.r) { o.l = 0; o.r = 0; }
-      return o;
-    }
+    get(f) { return control(f, KEYMAP_P1, Input.twoPlayers ? [MOVE_P1] : [MOVE_P1, ARROWS], 0, true); }
   };
   Input.p2 = {
     isCPU: false,
-    get() {
-      const o = blank();
-      for (const code in KEYMAP_P2) if (keys[code]) o[KEYMAP_P2[code]] = 1;
-      merge(o, readPad(1));
-      if (o.l && o.r) { o.l = 0; o.r = 0; }
-      return o;
-    }
+    get(f) { return control(f, KEYMAP_P2, [ARROWS], 1, false); }
   };
   Input.anyKey = () => Object.keys(keys).some((k) => keys[k]);
 
   // ------------------------------------------------------------ rendu des commandes tactiles
-  const ICON = { a: 'A', b: 'B', c: 'C', g: 'G', t: 'S', s: '★' };
-  const COLORS = { a: '#4fc3f7', b: '#ff7043', c: '#ba68c8', g: '#81c784', t: '#ffd54f', s: '#ffd23f' };
+  const ICON = { a: 'A', b: 'B', c: 'C', g: 'G', t: 'S', s: '★', j: '▲' };
+  const COLORS = { a: '#4fc3f7', b: '#ff7043', c: '#ba68c8', g: '#81c784', t: '#ffd54f', s: '#ffd23f', j: '#f4f4f8' };
   Input.drawTouch = function (ctx, W, H, battle) {
     const T = Input.touch;
     if (!T.visible) return;

@@ -27,6 +27,7 @@
     { id: 'assidu', name: 'Assidu', desc: 'Terminer 5 séances d\'entraînement.', reward: 60, progress: (s) => [s.stats.trainings || 0, 5] },
     { id: 'heros', name: 'Un héros est né', desc: 'Créer son propre héros.', reward: 100 },
     { id: 'ecole', name: 'Diplômé', desc: 'Terminer l\'École du Maître.', reward: 100 },
+    { id: 'esquive10', name: 'Insaisissable', desc: 'Esquiver 10 attaques en se décalant sur le côté.', reward: 120, progress: (s) => [s.stats.dodges || 0, 10] },
     { id: 'aura_max', name: 'Puissance maximale', desc: 'Charger son aura jusqu\'à 3 barres.', reward: 80 },
     { id: 'eveil_heros', name: 'Jamais abandonner', desc: 'Gagner un combat après l\'Éveil du héros.', reward: 120 }
   ];

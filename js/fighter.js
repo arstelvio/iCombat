@@ -1,4 +1,8 @@
-/* Choc des Légendes — logique d'un combattant (machine à états, physique, animation) */
+/* Choc des Légendes — logique d'un combattant (machine à états, physique, animation).
+   Le combat se joue dans une arène 3D : chaque combattant a une position x le long de l'axe qui le relie
+   à son adversaire, une hauteur y, un décalage latéral zl (pas de côté, course en cercle) et une
+   direction de visée « aim » : une attaque lancée part dans cette direction, on peut donc l'esquiver
+   en se décalant sur le côté. */
 (function (C) {
   'use strict';
   const U = C.U, FX = C.FX, Rig = C.Rig, Poses = C.Poses;
@@ -22,6 +26,7 @@
       this.maxHp = Math.round(this.stats.hp * (cfg.hpMul || 1));
       this.dmgMul = cfg.dmgMul || 1;
       this.controller = cfg.controller || null;
+      this.human = !!(this.controller && !this.controller.isCPU);
       // Coups spéciaux faciles (joueurs humains) : SPÉCIAL seul choisit la technique selon la situation
       this.easy = !!(cfg.easy && this.controller && !this.controller.isCPU);
       this.easyTurn = 0;
@@ -38,7 +43,10 @@
 
     resetRound(x, facing) {
       this.x = x; this.y = 0; this.vx = 0; this.vy = 0;
+      this.zl = 0; this.vzl = 0;
       this.facing = facing;
+      this.aim = this.battle.dirYaw(this);
+      this.lastSide = { dir: 0, t: -99 }; this.sideReq = 0; this.sideDir = 0;
       this.hp = this.maxHp; this.dispHp = this.maxHp; this.redHp = this.maxHp;
       this.guard = 100; this.guardRegenDelay = 0;
       this.state = 'intro'; this.st = 0;
@@ -85,6 +93,31 @@
     weaponTipWorld() { return Rig.weaponTip(this.J, this.look, this.facing, this.x, this.y - this.hover()); }
     front(dist) { return this.x + this.facing * dist; }
     gainMeter(n) { this.meter = U.clamp(this.meter + n, 0, 300); }
+    // ------------------------------------------------------------ visée (3D)
+    // Direction regardée, en angle dans l'arène (sert à orienter le modèle 3D)
+    aimYaw() { return this.aim; }
+    // Écart entre la direction visée et la direction réelle de l'adversaire
+    aimErr() {
+      let e = (this.aim - this.battle.dirYaw(this)) % (Math.PI * 2);
+      if (e > Math.PI) e -= Math.PI * 2; else if (e < -Math.PI) e += Math.PI * 2;
+      return e;
+    }
+    // Distance latérale entre la ligne d'attaque et la cible : au-delà de la largeur du coup, il passe à côté
+    aimMiss(t) {
+      return Math.abs(Math.abs(t.x - this.x) * Math.sin(this.aimErr()));
+    }
+    updateAim() {
+      const want = this.battle.dirYaw(this);
+      let e = (this.aim - want) % (Math.PI * 2);
+      if (e > Math.PI) e -= Math.PI * 2; else if (e < -Math.PI) e += Math.PI * 2;
+      let rate = 9;
+      if (this.state === 'move' && this.move) {
+        const m = this.move;
+        // on suit l'adversaire pendant la préparation du coup, plus (ou très peu) une fois le coup parti
+        rate = this.mf < m._t0 ? (m.track != null ? m.track : 0.02) : (m.trackLate || 0);
+      }
+      this.aim = Math.abs(e) <= rate ? want : want + e - Math.sign(e) * rate;
+    }
     faceOpponent() {
       const o = this.opp;
       if (Math.abs(o.x - this.x) > 4) this.facing = o.x > this.x ? 1 : -1;
@@ -183,13 +216,25 @@
       this.upPressed = i.u && !p.u;
       this.downPressed = i.d && !p.d;
       if (i.dash) this.dashReq = i.dash;
+      // pas de côté : double appui latéral (ou demande directe de l'IA)
+      this.sideReq = 0;
+      const zi = i.zi || 0, zp = p.zi || 0;
+      if (zi && zi !== zp) {
+        if (this.lastSide.dir === zi && this.frame - this.lastSide.t < 14) this.sideReq = zi;
+        this.lastSide = { dir: zi, t: this.frame };
+      }
+      if (i.side) this.sideReq = i.side;
     }
 
     // Choix d'un coup selon les boutons en mémoire (peek = sans consommer)
     pickMove(peek) {
       const b = this.buf, i = this.inp, M = this.moves;
       const air = !this.onGround;
-      const side = this.holdFwd() || this.holdBack();
+      const fwd = this.holdFwd(), back = this.holdBack();
+      // Variantes des coups. Joueur : joystick sur le côté = coups « vers le haut » (lanceur, envol…),
+      // joystick en arrière = coups bas et techniques défensives. L'IA les demande directement (mu / md).
+      const modU = !!(i.mu || (this.human ? (i.zi && !fwd && !back) : i.u));
+      const modD = !!(i.md || i.d || (this.human && back && !i.zi));
       let id = null, key = null;
       if (b.s) {
         key = 's';
@@ -200,14 +245,14 @@
       if (!id && b.t) { key = 't'; id = air ? (b.a || b.b ? null : 'AL') : 'GRAB'; }
       if (!id && b.c) {
         key = 'c';
-        id = i.u ? 'U' : i.d ? 'D' : side ? 'F' : (this.easy ? this.autoSpecial() : 'N');
+        id = modU ? 'U' : modD ? 'D' : fwd ? 'F' : (this.easy ? this.autoSpecial() : 'N');
         if (air && M['A' + id]) id = 'A' + id;
         else if (air && M[id] && !M[id].air) id = null;
         else if (!air && M[id] && M[id].air === 'only') id = null;
       }
-      if (!id && b.b) { key = 'b'; id = air ? 'AH' : i.u ? 'UH' : i.d ? 'DH' : (this.holdFwd() && M.FH ? 'FH' : 'H'); }
+      if (!id && b.b) { key = 'b'; id = air ? 'AH' : modU ? 'UH' : modD ? 'DH' : (fwd && M.FH ? 'FH' : 'H'); }
       if (!id && b.a) {
-        key = 'a'; id = air ? 'AL' : i.d ? 'DL' : 'L1';
+        key = 'a'; id = air ? 'AL' : modD ? 'DL' : 'L1';
         // Léger → Léger → Léger : chaque appui pendant le coup enchaîne le suivant
         // (coups spéciaux faciles : un 4e appui termine par une technique spéciale)
         if (id === 'L1' && this.state === 'move' && this.move) {
@@ -243,6 +288,7 @@
       this.frame++;
       if (this.hitstop > 0) { this.hitstop--; this.updatePose(true); return; }
       this.readInput();
+      this.updateAim();
       if (this.flash > 0) this.flash -= 0.12;
       if (this.invuln > 0) this.invuln--;
       if (this.parryWin > 0) this.parryWin--;
@@ -297,6 +343,15 @@
           if (this.st >= 18 && this.onGround) this.toIdle();
           break;
         }
+        case 'sidestep': {
+          // pas de côté rapide : sort de la trajectoire des attaques
+          this.faceOpponent();
+          this.vx *= 0.5;
+          this.vzl = this.sideDir * this.stats.dash * (this.st < 8 ? 0.95 : 0.4);
+          if (this.st % 3 === 0) FX.dust(this.x, 0, this.facing, 1);
+          if (this.st >= 10) this.toIdle();
+          break;
+        }
         case 'move': this.stepMove(); break;
         case 'hitstun':
           if (--this.hitstun <= 0) this.toIdle();
@@ -341,13 +396,17 @@
       if (id && this.startMove(id)) return;
       if (i.u) { this.state = 'jumpsquat'; this.st = 0; this.jumpDir = this.holdFwd() ? 1 : this.holdBack() ? -1 : 0; this.crouching = false; return; }
       if (i.g) { this.state = 'guard'; this.st = 0; return; }
+      if (this.sideReq && this.dashCool <= 0) { this.state = 'sidestep'; this.st = 0; this.sideDir = this.sideReq; this.dashCool = 8; C.Audio.play('dash'); FX.dust(this.x, 0, this.facing, 4); return; }
       if (this.dashReq === 1 && this.dashCool <= 0) { this.state = 'dash'; this.st = 0; this.dashCool = 6; C.Audio.play('dash'); FX.dust(this.x, 0, this.facing, 4); return; }
       if (this.dashReq === -1 && this.dashCool <= 0) { this.state = 'backdash'; this.st = 0; this.invuln = 6; this.dashCool = 10; C.Audio.play('dash'); FX.dust(this.x, 0, -this.facing, 4); return; }
       if (this.crouching) { this.vx *= 0.6; this.walking = 0; return; }
-      const sp = this.stats.walk * this.speedMul();
+      // marche libre dans l'arène : vers l'adversaire, en arrière, et sur les côtés (en cercle autour de lui)
+      const zi = i.zi || 0;
+      const sp = this.stats.walk * this.speedMul() * (zi && (this.holdFwd() || this.holdBack()) ? 0.78 : 1);
       if (this.holdFwd()) { this.vx = this.facing * sp; this.walking = 1; }
       else if (this.holdBack()) { this.vx = -this.facing * sp * 0.82; this.walking = -1; }
       else { this.vx *= 0.6; this.walking = 0; }
+      if (zi) { this.vzl = zi * sp * 0.95; if (!this.walking) this.walking = 1; this.strafing = true; } else this.strafing = false;
       if (this.walking && this.st % 18 === 0) C.Audio.play('footstep');
     }
 
@@ -369,6 +428,7 @@
       this.onGround = false;
       this.vy = -this.stats.jump;
       this.vx = dir * (this.stats.walk * 1.05 + 1.5) * this.speedMul();
+      this.vzl = (this.inp.zi || 0) * (this.stats.walk + 1.2) * this.speedMul();
       this.crouching = false;
       this.fastFall = false;
       C.Audio.play('jump');
@@ -392,6 +452,7 @@
       // contrôle aérien léger
       if (i.l) this.vx = U.approach(this.vx, -this.stats.walk * 1.1, 0.25);
       if (i.r) this.vx = U.approach(this.vx, this.stats.walk * 1.1, 0.25);
+      if (i.zi) this.vzl = U.approach(this.vzl, i.zi * this.stats.walk * 1.05, 0.25);
       if (this.downPressed && this.vy > -4) this.fastFall = true;
     }
 
@@ -405,6 +466,13 @@
       if (def.cond && !def.cond(this, this.battle)) return false;
       if (this.weaponAway && def.needWeapon) return false;
       if (def.cost) this.meter -= def.cost;
+      if (def._t0 == null) {
+        // première image active : jusque-là, le combattant peut encore ajuster sa visée
+        let t0 = 99;
+        if (def.hits) def.hits.forEach((h) => { t0 = Math.min(t0, h.f0); });
+        if (def.spawn) def.spawn.forEach((sp) => { t0 = Math.min(t0, sp.f); });
+        def._t0 = t0 === 99 ? 8 : t0;
+      }
       this.move = def; this.mf = 0; this.state = 'move'; this.st = 0;
       this.moveHit = false; this.moveContact = false; this.moveHitIds = {}; this.md = {};
       this.animFrom = Object.assign({}, this.pose);
@@ -496,7 +564,14 @@
       } else if (noGrav) {
         this.vy *= 0.85;
       }
-      this.x += this.vx;
+      if (s === 'move' && this.vx) {
+        // un coup en déplacement part dans la direction visée, pas forcément vers l'adversaire
+        const e = this.aimErr();
+        this.x += this.vx * Math.cos(e);
+        this.zl += this.vx * Math.sin(e);
+      } else this.x += this.vx;
+      this.zl += this.vzl;
+      if (this.onGround) this.vzl = 0;
       this.y += this.vy;
       if (this.y >= 0) {
         this.y = 0;
@@ -513,7 +588,7 @@
         else if (s === 'landing' || s === 'getup' || s === 'stun' || s === 'guard') this.vx *= 0.7;
       }
       const st = this.battle.stage;
-      const lim = 34 * this.size;
+      const lim = 40 * this.size;
       if (this.x < st.left + lim) { this.x = st.left + lim; this.atWall = -1; }
       else if (this.x > st.right - lim) { this.x = st.right - lim; this.atWall = 1; }
       else this.atWall = 0;
@@ -572,8 +647,11 @@
       else if ((s === 'idle' || s === 'landing') && (dirToSrc > 0 ? this.inp.l : this.inp.r)) blocking = true;
       if (!blocking) return false;
       const crouch = !!this.inp.d;
-      if (hit.level === 'low' && !crouch) return false;
-      if (hit.level === 'overhead' && crouch) return false;
+      // Joueurs : la garde arrête tous les coups (pas de garde haute / basse à deviner)
+      if (!this.human) {
+        if (hit.level === 'low' && !crouch) return false;
+        if (hit.level === 'overhead' && crouch) return false;
+      }
       this.crouching = crouch;
       return true;
     }
@@ -588,6 +666,7 @@
 
     enterHit(hit, dirX, stunFrames) {
       this.move = null; this.auraColor = null; this.hidden = false;
+      this.vzl = 0;
       this.charging = false;
       const kbx = (hit.kb ? hit.kb[0] : 4) * dirX * (1.15 - this.stats.weight * 0.15);
       const kby = hit.kb ? hit.kb[1] : 0;
@@ -618,8 +697,8 @@
         case 'intro': target = Poses.get(this.st < 60 ? 'intro' : 'idle', L); blend = 0.15; break;
         case 'idle':
           if (this.crouching) { target = Poses.get('crouch', L); blend = 0.4; }
-          else if (this.walking && Math.abs(this.vx) > 0.5) {
-            this.walkPhase += Math.abs(this.vx) * 0.075;
+          else if (this.walking && (Math.abs(this.vx) > 0.5 || this.strafing)) {
+            this.walkPhase += Math.max(Math.abs(this.vx), this.strafing ? this.stats.walk * 0.9 : 0) * 0.075;
             target = Poses.walk(L, this.walkPhase, this.walking, this.tmpPose);
             blend = 0.45;
           } else target = Poses.breathe(L, t + this.side, this.tmpPose);
@@ -629,6 +708,7 @@
         case 'landing': target = Poses.get('crouch', L); blend = 0.5; break;
         case 'air': target = Poses.get(this.vy < 0 ? 'jump' : 'fall', L); blend = 0.2; break;
         case 'dash': this.walkPhase += 0.45; target = Poses.run(L, this.walkPhase, this.tmpPose); blend = 0.5; break;
+        case 'sidestep': target = Poses.get('dash', L); blend = 0.5; break;
         case 'backdash': target = Poses.get('backdash', L); blend = 0.4; break;
         case 'move': target = this.animPose(); blend = 1; break;
         case 'hitstun': {
@@ -667,55 +747,6 @@
       return prev;
     }
 
-    // ------------------------------------------------------------ rendu
-    renderShadow(ctx) {
-      const k = U.clamp(1 + this.y / 500, 0.35, 1);
-      ctx.globalAlpha = 0.32 * k;
-      ctx.fillStyle = '#000';
-      ctx.beginPath(); ctx.ellipse(this.x, 2, 48 * this.size * k, 9 * k, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    renderAura(ctx, color, strength) {
-      const H = this.dims.height * this.size;
-      const t = this.battle.time;
-      const cx = this.x, by = this.y - this.hover();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.35 * strength;
-      ctx.drawImage(FX.glowSprite(color), cx - H * 0.55, by - H * 1.12, H * 1.1, H * 1.25);
-      ctx.globalAlpha = 0.55 * strength;
-      ctx.fillStyle = U.rgba(color, 0.55);
-      for (let i = 0; i < 7; i++) {
-        const ph = t * 7 + i * 1.7;
-        const ox = (i - 3) * 13 * this.size;
-        const h = H * (0.75 + 0.3 * Math.sin(ph));
-        ctx.beginPath();
-        ctx.moveTo(cx + ox - 16, by + 4);
-        ctx.quadraticCurveTo(cx + ox - 22, by - h * 0.5, cx + ox + Math.sin(ph * 1.3) * 10, by - h);
-        ctx.quadraticCurveTo(cx + ox + 22, by - h * 0.5, cx + ox + 16, by + 4);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
-    }
-    render(ctx) {
-      if (this.hidden) return;
-      const t = this.battle.time;
-      if (this.awakened > 0) this.renderAura(ctx, this.ch.awakenAura || '#ffd84a', 1);
-      else if (this.auraColor) this.renderAura(ctx, this.auraColor, 0.85);
-      const shake = this.hitstop > 0 && (this.state === 'hitstun' || this.state === 'airhit' || this.state === 'blockstun') ? (this.frame % 2 ? 3 : -3) : 0;
-      const blink = (this.state === 'getup' || this.invuln > 0) && this.frame % 4 < 2 ? 0.65 : 1;
-      ctx.save();
-      ctx.translate(this.x + shake, this.y - this.hover());
-      Rig.draw(ctx, this.look, this.pose, {
-        facing: this.facing, time: t, flash: this.flash > 0 ? this.flash : 0,
-        awakened: this.awakened > 0, vx: this.vx * this.facing,
-        weaponHidden: this.weaponAway || (this.look.weaponHidden && !(this.move && this.move.showWeapon)),
-        glow: this.state === 'move' && this.move.glow ? 1 : 0,
-        mouth: (this.state === 'move' && (this.move.kind !== 'normal')) || this.state === 'hitstun' || this.state === 'airhit' ? 'open' : null,
-        shadowTint: this.shadowTint, alpha: blink, joints: this.J
-      });
-      ctx.restore();
-    }
   }
 
   Fighter.EMPTY = EMPTY;

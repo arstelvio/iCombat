@@ -145,6 +145,7 @@
       if (p.life <= 0) { ps.splice(i, 1); continue; }
       p.vx *= p.drag; p.vy = p.vy * p.drag + p.grav;
       p.x += p.vx; p.y += p.vy;
+      if (p.vzl) p.zl = (p.zl || 0) + p.vzl;
       p.rot += p.vr;
       if (p.grow) p.size += p.t === 'ring' ? p.grow : p.grow;
     }
@@ -177,10 +178,12 @@
   }
   FX.drawBolt = drawBolt;
 
-  FX.draw = function (ctx) {
+  // V : vue 3D (C.R3.view). Chaque particule est projetée à sa place dans l'arène.
+  FX.draw = function (ctx, V) {
     const ps = FX.parts;
     for (let i = 0; i < ps.length; i++) {
       const p = ps[i];
+      if (V && !V.at(ctx, p.x, p.y, p.zl || 0)) continue;
       const k = p.life / p.max;
       ctx.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
       switch (p.t) {
@@ -305,12 +308,13 @@
     ctx.restore();
   }
 
-  FX.drawTexts = function (ctx) {
+  FX.drawTexts = function (ctx, V) {
     const ts = FX.texts;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (let i = 0; i < ts.length; i++) {
       const t = ts[i];
+      if (V && !V.flat(ctx, t.x, t.y, t.zl || 0)) continue;
       const k = t.life / t.max;
       const pop = t.life > t.max - 6 ? 1 + (t.life - (t.max - 6)) * 0.08 : 1;
       ctx.globalAlpha = Math.min(1, k * 3);

@@ -7,13 +7,15 @@
   const TIPS = [
     'Touchez GARDE juste avant un coup pour réussir une PARADE et contre-attaquer.',
     'Maintenez la direction opposée à l\'adversaire pour bloquer automatiquement.',
-    'Les coups bas (↓) doivent être bloqués accroupi, les attaques sautées debout.',
+    'L\'arène est en 3D : poussez le joystick vers le haut ou le bas de l\'écran pour tourner autour de l\'adversaire.',
+    'Un projectile arrive ? Courez sur le côté : il passera à côté de vous !',
     'Une projection (SAISIE) passe à travers la garde. Appuyez sur SAISIE pour vous dégager !',
-    'Double-tapez vers l\'avant pour une ruée, vers l\'arrière pour un pas de recul.',
+    'Double-tapez vers l\'avant pour une ruée, vers l\'arrière pour un pas de recul, sur le côté pour un pas de côté éclair.',
     'Annulez vos coups normaux en techniques spéciales quand ils touchent.',
-    'Avec 3 barres d\'ULTRA, déclenchez votre ULTIME. Maintenez ↓ pour garder vos barres et lancer un simple Super.',
+    'Avec 3 barres d\'ULTRA, déclenchez votre ULTIME : la caméra plonge sur votre héros !',
     'Bloquer trop longtemps use votre jauge de garde : attention à la GARDE BRISÉE !',
-    'Après un Lanceur (↑ + Lourd), sautez pour poursuivre le combo en l\'air.',
+    'Après un Lanceur (joystick sur le côté + LOURD), sautez pour poursuivre le combo en l\'air.',
+    'Les coups circulaires (joystick en arrière + LOURD) touchent même un adversaire qui tourne autour de vous.',
     'Carotte et Légume peuvent se transformer grâce à l\'Éveil Doré (ULTRA avec 1 barre).',
     'Terminez les chapitres du mode Histoire pour débloquer de nouveaux combattants.',
     'Gagnez des orbes ◆ pour acheter costumes, arènes et combattants dans la Boutique.',
@@ -140,15 +142,7 @@
       const p = previews[i];
       if (!p.cv.isConnected) { if (p.t > 1) previews.splice(i, 1); p.t += dt; continue; }
       p.t += dt;
-      const ctx = p.cv.getContext('2d');
-      const W = p.cv.width, H = p.cv.height;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, W, H);
       const look = p.look;
-      const d = C.Rig.dims(look);
-      const hv = look.hover ? look.hover + Math.sin(p.t * 3) * 4 : 0;
-      const totalH = (d.height + 30) * (look.scale || 1) + hv + 20;
-      const k = Math.min(H / totalH * 0.92, W / ((look.wings ? 330 : 230) * (look.scale || 1)));
       let target;
       if (p.opts.cycle) {
         const list = ['idle', 'taunt', 'cast', 'victory', 'charge', 'victory2'];
@@ -157,13 +151,8 @@
       } else if (p.opts.pose) target = C.Poses.get(p.opts.pose, look);
       else target = C.Poses.breathe(look, p.t);
       C.Rig.lerpPose(p.pose, target, 0.12, p.pose);
-      ctx.translate(W / 2, H - 10 * p.dpr);
-      ctx.scale(k, k);
-      // ombre
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath(); ctx.ellipse(0, 0, 60 * (look.scale || 1), 10, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.translate(0, -hv);
-      C.Rig.draw(ctx, look, p.pose, { facing: p.opts.flip ? -1 : 1, time: p.t, awakened: p.opts.awakened, shadowTint: look.shadow ? '#3b0f5c' : null });
+      // aperçu 3D : le personnage pivote doucement pour se montrer sous tous les angles
+      C.Rig.renderPreview(p.cv, look, p.pose, { flip: p.opts.flip, time: p.t, awakened: p.opts.awakened, spin: true });
     }
   }
 
@@ -290,7 +279,7 @@
           h('div.logo-sub', null, 'Le tournoi des mondes')),
         h('div.press.blink', null, C.touchDevice ? 'Touchez l\'écran pour commencer' : 'Appuyez sur une touche pour commencer'),
         C.Pwa && C.Pwa.iosBrowser ? h('div.install-tip', null, '📲 Plein écran et hors ligne : Partager → « Sur l\'écran d\'accueil »') : null,
-        h('div.footer', null, 'v1.2 · 17 combattants + ton héros · 10 arènes · Créations originales'));
+        h('div.footer', null, 'v2.0 · Arènes 3D · 17 combattants + ton héros · Créations originales'));
       return el;
     },
     onAny() { C.Audio.init(); C.Audio.music('menu'); UI.go('slots', {}, { reset: true }); },
@@ -407,11 +396,17 @@
       const isNew = !d.hero;
       const hd = Object.assign({}, C.Roster.HERO_DEFAULT, { name: (d.name || 'Héros').slice(0, 12) }, d.hero || {});
       let awake = false;
-      const cv = preview(C.Roster.heroLook(hd), rem(12), rem(13.5));
+      // chaque apparence essayée a son propre modèle 3D (identifié par ses choix)
+      const editLook = () => {
+        const L = C.Roster.heroLook(hd);
+        L.id = 'edit|' + [hd.power, hd.hair, hd.hairColor, hd.skin, hd.outfit, hd.outfit2, hd.aura, hd.extra].join('|');
+        return L;
+      };
+      const cv = preview(editLook(), rem(12), rem(13.5));
       const titleEl = h('div.sel-title');
       const refresh = () => {
         const p = cv._p;
-        p.look = C.Roster.heroLook(hd);
+        p.look = editLook();
         p.opts.awakened = awake;
         titleEl.textContent = C.Roster.HERO_POWERS[hd.power].title;
       };
@@ -1076,7 +1071,7 @@
             toggle('Coups spéciaux faciles', 'easySpecials'),
             h('div.opt-note', null, 'Coups spéciaux faciles : SPÉCIAL seul choisit la bonne technique selon la distance, et Léger ×4 termine le combo par une technique.'),
             toggle('Mode gaucher', 'leftHanded'),
-            h('div.opt-note', null, 'Clavier : ZQSD/WASD + J (Léger) K (Lourd) L (Spécial) I (Garde) U (Saisie) O (Ultra) · Manettes Bluetooth compatibles.')),
+            h('div.opt-note', null, 'Clavier : ZQSD/WASD (déplacement) · Espace (Saut) · J (Léger) K (Lourd) L (Spécial) I (Garde) U (Saisie) O (Ultra) · Manettes Bluetooth compatibles.')),
           h('div.opt-group', null, h('div.opt-head', null, '⚔️ Combat'),
             h('div.opt-line', null, h('span', null, 'Manches gagnantes'), chips([{ label: '1', value: 1 }, { label: '2', value: 2 }, { label: '3', value: 3 }], s.rounds, (v) => { s.rounds = v; save(); })),
             h('div.opt-line', null, h('span', null, 'Durée d\'une manche'), chips([{ label: '60 s', value: 60 }, { label: '99 s', value: 99 }, { label: '∞', value: 0 }], s.time, (v) => { s.time = v; save(); })),

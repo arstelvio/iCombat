@@ -24,6 +24,8 @@ html, body {
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
   -webkit-touch-callout: none; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
 }
+/* Deux calques : la scène 3D (WebGL) dessous, les effets, l'interface de combat et les commandes dessus */
+#game3d { position: fixed; inset: 0; display: block; background: #0b0718; }
 #game { position: fixed; inset: 0; display: block; touch-action: none; }
 #ui { position: fixed; inset: 0; display: none; z-index: 5; }
 #ui.show { display: block; }
