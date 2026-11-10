@@ -1,10 +1,11 @@
 /* Choc des Légendes — gestion d'un combat : manches, caméra, collisions, HUD.
-   Arène 3D : la logique des coups se joue dans le « plan de combat », plan vertical qui passe par les deux
-   combattants. Quand l'un d'eux se déplace sur le côté, ce plan pivote dans l'arène (reframe) ; les
-   projectiles et les effets, eux, continuent tout droit et peuvent donc être esquivés. */
+   Le combat se joue en 2D sur la « ligne de combat », un diamètre de l'arène ronde rendue en 3D :
+   les combattants avancent, reculent, sautent et s'accroupissent, la caméra les regarde de côté.
+   (Le plan de combat peut pivoter dans l'arène — rotateFrame — mais plus rien ne le fait tourner.) */
 (function (C) {
   'use strict';
   const U = C.U, FX = C.FX;
+  const CAM_AZ = 0.13; // angle de la caméra par rapport à une vue de profil
   const COMIC = {
     punch: ['BAM !', 'POW !', 'BOUM !', 'WHAM !', 'PAF !', 'VLAN !', 'BONG !', 'KRAK !'],
     slash: ['TCHAK !', 'ZING !', 'SHLAK !', 'VZIIING !', 'KLANG !'],
@@ -59,16 +60,6 @@
     world(x, zl) {
       const A = this.ax, c = Math.cos(A.th), s = Math.sin(A.th);
       return [A.ox + x * c - zl * s, A.oz + x * s + zl * c];
-    }
-    // Joystick (relatif à la caméra) → déplacement dans le plan : [le long de l'axe, latéral]
-    stickToPlane(sx, sy) {
-      const c = this.cam, A = this.ax;
-      let fx = c.tx - c.px, fz = c.tz - c.pz;
-      const l = Math.hypot(fx, fz) || 1;
-      fx /= l; fz /= l;
-      const mx = sx * -fz + -sy * fx, mz = sx * fx + -sy * fz;
-      const ct = Math.cos(A.th), st = Math.sin(A.th);
-      return [mx * ct + mz * st, -mx * st + mz * ct];
     }
     // Fait pivoter le plan de combat de dth autour du point (px, pz) : les positions dans l'arène ne changent pas
     rotateFrame(dth, px, pz) {
@@ -481,15 +472,6 @@
         // Contact avec un réflecteur au corps-à-corps → bloqué
         for (const ah of hits) {
           if (!hb || !U.overlap(ah.rect, hb)) continue;
-          // 3D : la cible s'est décalée hors de la ligne du coup (les coups circulaires « arc » balaient tout)
-          if (!ah.hit.arc && a.aimMiss(t) > (ah.hit.lat || 40) * a.size + t.pushWidth() * 0.5) {
-            if (!a.md.dodged) {
-              a.md.dodged = true;
-              FX.text(t.x, t.y - t.height() - 30, 'ESQUIVE !', '#9fe8ff', 30, 40);
-              this.emit('dodge', { side: t.side });
-            }
-            continue;
-          }
           a.moveHitIds[ah.idx] = a.mf;
           const px = (Math.max(ah.rect.x, hb.x) + Math.min(ah.rect.x + ah.rect.w, hb.x + hb.w)) / 2;
           const py = (Math.max(ah.rect.y, hb.y) + Math.min(ah.rect.y + ah.rect.h, hb.y + hb.h)) / 2;
@@ -582,6 +564,7 @@
         a.gainMeter((h.dmg || 20) * 0.12); t.gainMeter((h.dmg || 20) * 0.08);
         a.moveContact = true;
         t.matchStats.blocks++;
+        if (h.level === 'low') { t.matchStats.lowBlocks = (t.matchStats.lowBlocks || 0) + 1; this.emit('lowblock', { side: t.side }); }
         if (t.guard <= 0) {
           t.guard = 100;
           t.state = 'stun'; t.st = 0; t.stunTime = 70; t.stunPose = 'guardcrush'; t.move = null;
@@ -714,8 +697,8 @@
       }
     }
 
-    // Caméra 3D : tourne avec le plan de combat, recule quand les combattants s'éloignent,
-    // et passe en gros plan pour les Supers, les K.O. et la victoire
+    // Caméra : vue de côté (légèrement de trois-quarts pour le relief), qui recule quand les combattants
+    // s'éloignent et passe en gros plan pour les Supers, les K.O. et la victoire
     updateCamera() {
       const c = this.cam;
       const [a, b] = this.f;
@@ -723,7 +706,7 @@
       let fx = (a.x + b.x) / 2, fz = (a.zl + b.zl) / 2;
       const top = Math.min(a.y - a.height(), b.y - b.height());
       let fy = 128 + Math.max(0, -(top + 250)) * 0.45;
-      let D = U.clamp(610 + dist * 0.74, 800, 1400), az = 0.32, el = 0.12, k = 0.1;
+      let D = U.clamp(610 + dist * 0.74, 800, 1400), az = CAM_AZ, el = 0.12, k = 0.1;
       const fzs = this.freeze;
       if (fzs) {
         const f = fzs.f;
@@ -731,14 +714,14 @@
         D = fzs.ult ? 420 : 500; az = -f.facing * 0.95; el = 0.05; k = 0.24;
       } else if (this.phase === 'ko' || (this.phase === 'koWait' && this.pt < 40)) {
         const l = this.koInfo && this.koInfo.loser;
-        if (l) { fx = U.lerp(fx, l.x, 0.6); fz = U.lerp(fz, l.zl, 0.6); D = Math.max(640, D * 0.72); az = 0.32 + this.pt * 0.006; }
+        if (l) { fx = U.lerp(fx, l.x, 0.6); fz = U.lerp(fz, l.zl, 0.6); D = Math.max(640, D * 0.72); az = CAM_AZ + this.pt * 0.006; }
       } else if (this.phase === 'matchEnd' && this.winner) {
         const w = this.winner;
         fx = w.x; fz = w.zl; fy = w.hover() + w.height() * 0.6; D = 540; el = 0.07; k = 0.06;
         az = -w.facing * (0.8 + Math.sin(this.pt * 0.012) * 0.35);
       } else if (this.phase === 'intro') {
         const t = U.clamp(this.pt / 100, 0, 1), e = 1 - (1 - t) * (1 - t);
-        az = 0.32 + (1 - e) * 2.4; D += (1 - e) * 520; el = 0.12 + (1 - e) * 0.32; k = 0.25;
+        az = CAM_AZ + (1 - e) * 2.4; D += (1 - e) * 520; el = 0.12 + (1 - e) * 0.32; k = 0.25;
       }
       const ce = Math.cos(el);
       const P = this.world(fx - Math.sin(az) * D * ce, fz + Math.cos(az) * D * ce), T = this.world(fx, fz);

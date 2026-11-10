@@ -34,6 +34,8 @@
   };
 
   const STARTERS = ['kairo', 'godefroy', 'kage', 'leo'];
+  // Invités : ils n'apparaissent pas dans l'Histoire et sont jouables dès le départ, sur toutes les sauvegardes
+  const GUESTS = ['napoleon', 'zeus', 'rouge'];
   const START_STAGES = ['temple', 'chateau', 'bambous', 'dojo'];
 
   function newSaveData(name) {
@@ -46,7 +48,7 @@
       playTime: 0,
       orbs: 300,
       xp: 0,
-      unlocked: STARTERS.slice(),
+      unlocked: STARTERS.concat(GUESTS),
       costumes: {},
       stages: START_STAGES.slice(),
       story: { done: {}, difficulty: 1, seenIntro: false },
@@ -67,6 +69,12 @@
     for (const k in base) if (d[k] === undefined) d[k] = base[k];
     for (const k in base.stats) if (d.stats[k] === undefined) d.stats[k] = base.stats[k];
     if (!d.story.done) d.story.done = {};
+    for (const g of GUESTS) if (d.unlocked.indexOf(g) < 0) d.unlocked.push(g);
+    // l'ancien succès d'esquive latérale (jeu en 3D libre) devient celui de la garde basse
+    if (d.achievements.esquive10) {
+      if (!d.achievements.gardebasse) d.achievements.gardebasse = d.achievements.esquive10;
+      delete d.achievements.esquive10;
+    }
     return d;
   }
 
@@ -238,4 +246,5 @@
 
   C.Store = Store;
   C.STARTERS = STARTERS;
+  C.GUESTS = GUESTS;
 })(window.CDL = window.CDL || {});

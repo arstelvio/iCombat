@@ -1,6 +1,6 @@
 /* Choc des Légendes — projectiles, rayons, piliers, invocations.
-   En plus de x (le long de l'axe de combat) et y (hauteur), chaque entité a un décalage latéral zl :
-   elle continue tout droit quand les combattants tournent, ce qui permet de l'esquiver sur le côté. */
+   Le combat se joue en 2D : x le long de la ligne de combat, y la hauteur. Le décalage latéral zl ne sert
+   qu'à la mise en scène en 3D (renforts placés un peu en retrait ou en avant, qui visent la ligne de combat). */
 (function (C) {
   'use strict';
   const U = C.U, FX = C.FX;
@@ -19,7 +19,7 @@
       this.x = o.x; this.y = o.y;
       this.vx = o.vx || 0; this.vy = o.vy || 0;
       this.zl = o.zl || 0; this.vzl = o.vzl || 0;
-      // léger guidage latéral : un simple pas de côté ne suffit pas toujours, il faut vraiment se décaler
+      // les tirs partis à côté de la ligne de combat (renforts) y reviennent
       this.track = o.track != null ? o.track : 2.1;
       this.r = o.r || 16;
       this.w = o.w || this.r * 1.6; this.h = o.h || this.r * 1.6;
@@ -95,7 +95,8 @@
       if (k === 'fire' || k === 'firestar') FX.ember(this.x - this.vx * 2 + U.rand(-6, 6), this.y + U.rand(-6, 6), U.choice(['#ff6a00', '#ffb000', '#ffe08a']), -this.vx * 0.1, U.rand(-1, 0.5), U.rand(4, 9) * this.scale, 14);
       else if (k === 'ki' || k === 'violet' || k === 'psy' || k === 'light' || k === 'stun' || k === 'curse' || k === 'void' || k === 'star' || k === 'spirit')
         FX.ember(this.x - this.vx * 1.5, this.y + U.rand(-this.r * 0.4, this.r * 0.4), this.color, -this.vx * 0.05, U.rand(-0.5, 0.5), this.r * 0.45 * this.scale, 12);
-      else if (k === 'bolt') FX.smoke(this.x - this.vx, this.y, 4, '#888', 14, 0, -0.3);
+      else if (k === 'bolt' || k === 'boulet') FX.smoke(this.x - this.vx, this.y, k === 'boulet' ? 7 : 4, '#888', 14, 0, -0.3);
+      else if (k === 'foudre') FX.ember(this.x - this.vx * 1.5, this.y + U.rand(-8, 8), this.color, -this.vx * 0.05, U.rand(-1, 1), 5, 10);
       else if (k === 'snake') { /* rien */ }
       else if (k === 'wave') FX.dust(this.x, 0, this.dir, 1);
     }
@@ -358,6 +359,35 @@
       for (let i = 0; i < 10; i++) { const a = i * PI / 5 - PI / 2, rr = i % 2 ? r * 0.45 : r * 1.1; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
       ctx.closePath(); ctx.fill(); ctx.restore();
       ctx.globalCompositeOperation = 'source-over';
+    },
+    // boulet de canon
+    boulet(ctx, p) {
+      const r = p.r * p.scale;
+      ctx.fillStyle = '#1e1e24'; ctx.strokeStyle = '#160d1f'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, PI * 2); ctx.stroke(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath(); ctx.arc(p.x - r * 0.3, p.y - r * 0.35, r * 0.3, 0, PI * 2); ctx.fill();
+    },
+    // balle de pistolet ou de mousquet, avec son trait de lumière
+    balle(ctx, p) {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(p.vy, p.vx));
+      ctx.strokeStyle = 'rgba(255,233,168,0.6)'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-34, 0); ctx.lineTo(0, 0); ctx.stroke();
+      ctx.fillStyle = '#4a4a52'; ctx.strokeStyle = '#160d1f'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, PI * 2); ctx.stroke(); ctx.fill();
+      ctx.restore();
+    },
+    // trait de foudre
+    foudre(ctx, p) {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(p.vy, p.vx));
+      ctx.globalCompositeOperation = 'lighter';
+      glow(ctx, 0, 0, 80, p.color, 0.8);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const k = p.age % 4 < 2 ? 1 : -1;
+      const zig = () => { ctx.beginPath(); ctx.moveTo(-50, -7 * k); ctx.lineTo(-24, 9 * k); ctx.lineTo(-12, -9 * k); ctx.lineTo(10, 8 * k); ctx.lineTo(26, 0); ctx.stroke(); };
+      ctx.strokeStyle = U.rgba(p.color, 0.85); ctx.lineWidth = 11; zig();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; zig();
+      ctx.restore(); ctx.globalCompositeOperation = 'source-over';
     },
     bomb(ctx, p) {
       ctx.fillStyle = '#26262c'; ctx.strokeStyle = '#160d1f'; ctx.lineWidth = 2;

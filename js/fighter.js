@@ -1,8 +1,7 @@
 /* Choc des Légendes — logique d'un combattant (machine à états, physique, animation).
-   Le combat se joue dans une arène 3D : chaque combattant a une position x le long de l'axe qui le relie
-   à son adversaire, une hauteur y, un décalage latéral zl (pas de côté, course en cercle) et une
-   direction de visée « aim » : une attaque lancée part dans cette direction, on peut donc l'esquiver
-   en se décalant sur le côté. */
+   Le combat se joue en 2D dans une arène rendue en 3D : chaque combattant a une position x le long de
+   la ligne de combat et une hauteur y. On avance, on recule, on saute et on s'accroupit ; il n'y a pas de
+   déplacement latéral (zl reste à 0, et la direction de visée « aim » pointe toujours vers l'adversaire). */
 (function (C) {
   'use strict';
   const U = C.U, FX = C.FX, Rig = C.Rig, Poses = C.Poses;
@@ -44,9 +43,9 @@
     resetRound(x, facing) {
       this.x = x; this.y = 0; this.vx = 0; this.vy = 0;
       this.zl = 0; this.vzl = 0;
+      this.cool = {};
       this.facing = facing;
       this.aim = this.battle.dirYaw(this);
-      this.lastSide = { dir: 0, t: -99 }; this.sideReq = 0; this.sideDir = 0;
       this.hp = this.maxHp; this.dispHp = this.maxHp; this.redHp = this.maxHp;
       this.guard = 100; this.guardRegenDelay = 0;
       this.state = 'intro'; this.st = 0;
@@ -216,14 +215,6 @@
       this.upPressed = i.u && !p.u;
       this.downPressed = i.d && !p.d;
       if (i.dash) this.dashReq = i.dash;
-      // pas de côté : double appui latéral (ou demande directe de l'IA)
-      this.sideReq = 0;
-      const zi = i.zi || 0, zp = p.zi || 0;
-      if (zi && zi !== zp) {
-        if (this.lastSide.dir === zi && this.frame - this.lastSide.t < 14) this.sideReq = zi;
-        this.lastSide = { dir: zi, t: this.frame };
-      }
-      if (i.side) this.sideReq = i.side;
     }
 
     // Choix d'un coup selon les boutons en mémoire (peek = sans consommer)
@@ -231,10 +222,10 @@
       const b = this.buf, i = this.inp, M = this.moves;
       const air = !this.onGround;
       const fwd = this.holdFwd(), back = this.holdBack();
-      // Variantes des coups. Joueur : joystick sur le côté = coups « vers le haut » (lanceur, envol…),
-      // joystick en arrière = coups bas et techniques défensives. L'IA les demande directement (mu / md).
-      const modU = !!(i.mu || (this.human ? (i.zi && !fwd && !back) : i.u));
-      const modD = !!(i.md || i.d || (this.human && back && !i.zi));
+      // Variantes des coups : joystick vers le haut = coups « vers le haut » (lanceur, envol…),
+      // joystick vers le bas = coups bas et techniques défensives. L'IA les demande directement (mu / md).
+      const modU = !!(i.mu || i.u);
+      const modD = !!(i.md || i.d);
       let id = null, key = null;
       if (b.s) {
         key = 's';
@@ -245,7 +236,7 @@
       if (!id && b.t) { key = 't'; id = air ? (b.a || b.b ? null : 'AL') : 'GRAB'; }
       if (!id && b.c) {
         key = 'c';
-        id = modU ? 'U' : modD ? 'D' : fwd ? 'F' : (this.easy ? this.autoSpecial() : 'N');
+        id = modU ? 'U' : modD ? 'D' : (fwd || back) ? 'F' : (this.easy ? this.autoSpecial() : 'N');
         if (air && M['A' + id]) id = 'A' + id;
         else if (air && M[id] && !M[id].air) id = null;
         else if (!air && M[id] && M[id].air === 'only') id = null;
@@ -294,6 +285,7 @@
       if (this.parryWin > 0) this.parryWin--;
       if (this.parryCool > 0) this.parryCool--;
       if (this.dashCool > 0) this.dashCool--;
+      for (const k in this.cool) if (this.cool[k] > 0) this.cool[k]--;
       if (this.awakened > 0) {
         this.awakened--;
         if (this.awakened % 3 === 0) {
@@ -302,6 +294,16 @@
         }
         if (this.awakened % 47 === 0) FX.lightning(this.x + U.rand(-30, 30), this.y - U.rand(60, 180), this.x + U.rand(-40, 40), this.y - U.rand(20, 120), '#9fe8ff', 2, 4);
         if (this.awakened === 0) { FX.energyBurst(this.x, this.y - 100, this.ch.awakenAura || '#ffd84a', 12); }
+      }
+      // Régénération (Rouge Immortel) : la vie remonte doucement après deux secondes sans prendre de coup
+      const rg = this.ch.stats.regen;
+      if (rg) {
+        if (this.hp < (this.hpSeen != null ? this.hpSeen : this.hp)) this.calm = 0; else this.calm = (this.calm || 0) + 1;
+        if (this.calm > 120 && this.hp > 0 && this.hp < this.maxHp && this.state !== 'ko' && this.battle.phase === 'fight') {
+          this.hp = Math.min(this.maxHp, this.hp + rg);
+          if (this.frame % 22 === 0) FX.text(this.x + U.rand(-26, 26), this.y - this.height() * U.rand(0.4, 0.9), '+', '#7dff8a', 22, 26);
+        }
+        this.hpSeen = this.hp;
       }
       // Régénération de la garde
       if (this.guardRegenDelay > 0) this.guardRegenDelay--;
@@ -341,15 +343,6 @@
         case 'backdash': {
           if (this.st === 1) { this.vx = -this.facing * this.stats.dash * 0.85; this.vy = -5; this.onGround = false; }
           if (this.st >= 18 && this.onGround) this.toIdle();
-          break;
-        }
-        case 'sidestep': {
-          // pas de côté rapide : sort de la trajectoire des attaques
-          this.faceOpponent();
-          this.vx *= 0.5;
-          this.vzl = this.sideDir * this.stats.dash * (this.st < 8 ? 0.95 : 0.4);
-          if (this.st % 3 === 0) FX.dust(this.x, 0, this.facing, 1);
-          if (this.st >= 10) this.toIdle();
           break;
         }
         case 'move': this.stepMove(); break;
@@ -396,17 +389,13 @@
       if (id && this.startMove(id)) return;
       if (i.u) { this.state = 'jumpsquat'; this.st = 0; this.jumpDir = this.holdFwd() ? 1 : this.holdBack() ? -1 : 0; this.crouching = false; return; }
       if (i.g) { this.state = 'guard'; this.st = 0; return; }
-      if (this.sideReq && this.dashCool <= 0) { this.state = 'sidestep'; this.st = 0; this.sideDir = this.sideReq; this.dashCool = 8; C.Audio.play('dash'); FX.dust(this.x, 0, this.facing, 4); return; }
       if (this.dashReq === 1 && this.dashCool <= 0) { this.state = 'dash'; this.st = 0; this.dashCool = 6; C.Audio.play('dash'); FX.dust(this.x, 0, this.facing, 4); return; }
       if (this.dashReq === -1 && this.dashCool <= 0) { this.state = 'backdash'; this.st = 0; this.invuln = 6; this.dashCool = 10; C.Audio.play('dash'); FX.dust(this.x, 0, -this.facing, 4); return; }
       if (this.crouching) { this.vx *= 0.6; this.walking = 0; return; }
-      // marche libre dans l'arène : vers l'adversaire, en arrière, et sur les côtés (en cercle autour de lui)
-      const zi = i.zi || 0;
-      const sp = this.stats.walk * this.speedMul() * (zi && (this.holdFwd() || this.holdBack()) ? 0.78 : 1);
+      const sp = this.stats.walk * this.speedMul();
       if (this.holdFwd()) { this.vx = this.facing * sp; this.walking = 1; }
       else if (this.holdBack()) { this.vx = -this.facing * sp * 0.82; this.walking = -1; }
       else { this.vx *= 0.6; this.walking = 0; }
-      if (zi) { this.vzl = zi * sp * 0.95; if (!this.walking) this.walking = 1; this.strafing = true; } else this.strafing = false;
       if (this.walking && this.st % 18 === 0) C.Audio.play('footstep');
     }
 
@@ -428,7 +417,6 @@
       this.onGround = false;
       this.vy = -this.stats.jump;
       this.vx = dir * (this.stats.walk * 1.05 + 1.5) * this.speedMul();
-      this.vzl = (this.inp.zi || 0) * (this.stats.walk + 1.2) * this.speedMul();
       this.crouching = false;
       this.fastFall = false;
       C.Audio.play('jump');
@@ -452,7 +440,6 @@
       // contrôle aérien léger
       if (i.l) this.vx = U.approach(this.vx, -this.stats.walk * 1.1, 0.25);
       if (i.r) this.vx = U.approach(this.vx, this.stats.walk * 1.1, 0.25);
-      if (i.zi) this.vzl = U.approach(this.vzl, i.zi * this.stats.walk * 1.05, 0.25);
       if (this.downPressed && this.vy > -4) this.fastFall = true;
     }
 
@@ -465,6 +452,11 @@
       if (!def.air && !this.onGround) return false;
       if (def.cond && !def.cond(this, this.battle)) return false;
       if (this.weaponAway && def.needWeapon) return false;
+      // temps de recharge propre à certains coups (compté à partir de la fin du coup)
+      if (def.cooldown) {
+        if (this.cool[def.id] > 0) return false;
+        this.cool[def.id] = (def.frames || 0) + def.cooldown;
+      }
       if (def.cost) this.meter -= def.cost;
       if (def._t0 == null) {
         // première image active : jusque-là, le combattant peut encore ajuster sa visée
@@ -647,10 +639,12 @@
       else if ((s === 'idle' || s === 'landing') && (dirToSrc > 0 ? this.inp.l : this.inp.r)) blocking = true;
       if (!blocking) return false;
       const crouch = !!this.inp.d;
-      // Joueurs : la garde arrête tous les coups (pas de garde haute / basse à deviner)
-      if (!this.human) {
-        if (hit.level === 'low' && !crouch) return false;
-        if (hit.level === 'overhead' && crouch) return false;
+      // Garde haute (debout) : arrête les coups normaux et les coups plongeants, pas les coups bas.
+      // Garde basse (accroupi) : arrête les coups normaux et les coups bas, pas les coups plongeants.
+      if ((hit.level === 'low' && !crouch) || (hit.level === 'overhead' && crouch)) {
+        // le joueur gardait, mais à la mauvaise hauteur : on lui dit pourquoi le coup est passé
+        if (this.human) FX.text(this.x, this.y - this.height() - 34, hit.level === 'low' ? 'COUP BAS : GARDE BASSE !' : 'COUP PLONGEANT : GARDE HAUTE !', '#ffb347', 24, 46);
+        return false;
       }
       this.crouching = crouch;
       return true;
@@ -697,8 +691,8 @@
         case 'intro': target = Poses.get(this.st < 60 ? 'intro' : 'idle', L); blend = 0.15; break;
         case 'idle':
           if (this.crouching) { target = Poses.get('crouch', L); blend = 0.4; }
-          else if (this.walking && (Math.abs(this.vx) > 0.5 || this.strafing)) {
-            this.walkPhase += Math.max(Math.abs(this.vx), this.strafing ? this.stats.walk * 0.9 : 0) * 0.075;
+          else if (this.walking && Math.abs(this.vx) > 0.5) {
+            this.walkPhase += Math.abs(this.vx) * 0.075;
             target = Poses.walk(L, this.walkPhase, this.walking, this.tmpPose);
             blend = 0.45;
           } else target = Poses.breathe(L, t + this.side, this.tmpPose);
@@ -708,7 +702,6 @@
         case 'landing': target = Poses.get('crouch', L); blend = 0.5; break;
         case 'air': target = Poses.get(this.vy < 0 ? 'jump' : 'fall', L); blend = 0.2; break;
         case 'dash': this.walkPhase += 0.45; target = Poses.run(L, this.walkPhase, this.tmpPose); blend = 0.5; break;
-        case 'sidestep': target = Poses.get('dash', L); blend = 0.5; break;
         case 'backdash': target = Poses.get('backdash', L); blend = 0.4; break;
         case 'move': target = this.animPose(); blend = 1; break;
         case 'hitstun': {

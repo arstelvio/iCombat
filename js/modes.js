@@ -77,10 +77,10 @@
           if (e.type === 'guardcrush' && e.side === 0 && C.Store.current) C.Store.current.stats.guardCrushes++;
           if (e.type === 'charge' && e.side === 0 && e.bar >= 3 && C.Store.current) C.Achievements.grant('aura_max');
           if (e.type === 'awaken' && e.side === 0) this.ctx.heroAwoke = true;
-          if (e.type === 'dodge' && e.side === 0 && C.Store.current && this.ctx.mode !== 'training') {
+          if (e.type === 'lowblock' && e.side === 0 && C.Store.current && this.ctx.mode !== 'training') {
             const st = C.Store.current.stats;
-            st.dodges = (st.dodges || 0) + 1;
-            if (st.dodges >= 10) C.Achievements.grant('esquive10');
+            st.lowBlocks = (st.lowBlocks || 0) + 1;
+            if (st.lowBlocks >= 10) C.Achievements.grant('gardebasse');
           }
         }
         b.events.length = 0;
@@ -232,7 +232,7 @@
       const opps = U.shuffle(pool).slice(0, 7);
       opps.push('omega');
       const stages = opps.map((id) => {
-        const map = { kairo: 'temple', zarkan: 'temple', aldaron: 'academie', godefroy: 'chateau', kage: 'bambous', takeda: 'dojo', cassius: 'forge', leo: 'academie', mordrak: 'ruines', kael: 'vaisseau', noctis: 'vaisseau', malvar: 'vaisseau', tk7: 'vaisseau', pyrodrake: 'volcan', lumi: 'ruines', psykron: 'ruines', omega: 'neant' };
+        const map = { kairo: 'temple', zarkan: 'temple', aldaron: 'academie', godefroy: 'chateau', kage: 'bambous', takeda: 'dojo', cassius: 'forge', leo: 'academie', mordrak: 'ruines', kael: 'vaisseau', noctis: 'vaisseau', malvar: 'vaisseau', tk7: 'vaisseau', pyrodrake: 'volcan', lumi: 'ruines', psykron: 'ruines', napoleon: 'chateau', zeus: 'ruines', rouge: 'vaisseau', omega: 'neant' };
         return map[id] || 'temple';
       });
       return { char, costume, diff, opps, stages, idx: 0, score: 0, continues: 0, total: 0 };

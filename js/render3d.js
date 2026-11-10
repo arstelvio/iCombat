@@ -460,7 +460,7 @@
       const aura = f.awakened > 0 ? (f.ch.awakenAura || '#ffd84a') : f.auraColor;
       m.apply(f.pose, f.J.hip ? f.J : C.Rig.solve(f.pose, m.d, f.J), {
         time: t, flash: f.flash > 0 ? f.flash : 0, awakened: f.awakened > 0, vx: f.vx * f.facing,
-        weaponHidden: f.weaponAway || (f.look.weaponHidden && !(moving && f.move.showWeapon)),
+        weaponHidden: f.weaponAway || (moving && f.move.hideWeapon) || (f.look.weaponHidden && !(moving && f.move.showWeapon)),
         glow: moving && f.move.glow ? 1 : 0,
         mouth: (moving && f.move.kind !== 'normal') || f.state === 'hitstun' || f.state === 'airhit' ? 'open' : null,
         aura, auraK: f.awakened > 0 ? 1 : 0.85
@@ -517,7 +517,7 @@
     } else {
       vh = (d.height + 34) * sc + hv + (look.wings ? 40 : 0);
       ty = vh * 0.47;
-      yaw = -0.55 + (o.spin ? Math.sin((o.time || 0) * 0.7) * 0.55 : 0);
+      yaw = o.yaw != null ? o.yaw : -0.55 + (o.spin ? Math.sin((o.time || 0) * 0.7) * 0.55 : 0);
     }
     if (o.flip) { yaw = -(PI - (-yaw)); tx = -tx; }
     m.root.rotation.y = yaw;

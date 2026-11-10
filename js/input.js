@@ -183,8 +183,8 @@
 
   // ------------------------------------------------------------ contrôleurs
   const BTNS = ['a', 'b', 'c', 'g', 's', 't', 'u'];
-  // Rassemble clavier, manette et tactile ; convertit le joystick (relatif à la caméra) en
-  // déplacement le long de l'axe de combat (l / r) et sur le côté (zi)
+  // Rassemble clavier, manette et tactile. Le joystick commande un déplacement en 2D :
+  // gauche / droite pour avancer ou reculer, haut pour sauter, bas pour s'accroupir (garde basse, coups bas)
   function control(f, keymap, moves, padIndex, touch) {
     const o = blank();
     let sx = 0, sy = 0;
@@ -203,10 +203,9 @@
     }
     const m = Math.hypot(sx, sy);
     if (m > 0.3) {
-      const b = f && f.battle;
-      const v = b && b.stickToPlane ? b.stickToPlane(sx / m, sy / m) : [sx / m, sy / m];
-      if (v[0] > 0.38) o.r = 1; else if (v[0] < -0.38) o.l = 1;
-      if (v[1] > 0.38) o.zi = 1; else if (v[1] < -0.38) o.zi = -1;
+      const k = m > 1 ? 1 / m : 1, x = sx * k, y = sy * k;
+      if (x > 0.38) o.r = 1; else if (x < -0.38) o.l = 1;
+      if (y < -0.6) o.u = 1; else if (y > 0.45) o.d = 1;
     }
     return o;
   }

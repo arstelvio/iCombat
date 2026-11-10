@@ -297,6 +297,28 @@
       } else if (chest === 'darklord') {
         this.part(twist, G.box(4, 15, 18), '#2d2f36', D * 0.5, tH * 0.66, W * 0.1);
         ['#ee3333', '#33cc33', '#3399ff', '#ffdd33'].forEach((col, i) => this.part(twist, G.box(1.5, 3, 3), col, D * 0.5 + 2.4, tH * 0.7, W * 0.1 - 6 + i * 4, { mat: this.glowMat(col, 1) }));
+      } else if (chest === 'uniform') {
+        // habit militaire : plastron clair, boutons dorés, col rouge
+        this.part(twist, G.ell(D * 0.2, tH * 0.4, W * 0.27), c.inner || '#f4f1e8', D * 0.4, tH * 0.52, 0, { plain: true });
+        for (let i = 0; i < 4; i++) for (const s of [1, -1]) this.part(twist, G.sphere(1.7), c.accent || '#d4a017', D * 0.56 - i * 0.6, tH * (0.82 - i * 0.17), s * W * 0.17, { plain: true });
+        this.part(twist, G.taper(D * 0.34, W * 0.3, D * 0.3, W * 0.25, 7), c.collar || '#b3141c', 0, tH + 1, 0);
+        this.between(twist, [D * 0.5, tH * 0.98, -W * 0.3], [D * 0.5, tH * 0.2, W * 0.3], 2.2, c.collar || '#b3141c', { plain: true });
+      } else if (chest === 'toga') {
+        // drapé à une épaule : l'autre épaule reste nue
+        this.part(twist, G.ell(D * 0.52, tH * 0.3, W * 0.3), skin, D * 0.03, tH * 0.8, W * 0.27, { plain: true });
+        this.between(twist, [D * 0.5, tH * 1.0, -W * 0.34], [D * 0.54, tH * 0.34, W * 0.36], 3, c.accent || '#d4a017', { plain: true });
+        this.between(twist, [-D * 0.5, tH * 1.0, -W * 0.34], [-D * 0.54, tH * 0.34, W * 0.36], 3, c.accent || '#d4a017', { plain: true });
+        this.part(twist, G.sphere(5), c.accent || '#d4a017', D * 0.3, tH * 1.02, -W * 0.36);
+      } else if (chest === 'merc') {
+        // combinaison de mercenaire : flancs sombres, sangles croisées, sacoches
+        const dark = c.accent || '#1a1a1e', strap = c.belt || '#6b5a3a';
+        for (const s of [1, -1]) {
+          this.part(twist, G.ell(D * 0.42, tH * 0.4, W * 0.15), dark, 0, tH * 0.5, s * W * 0.4, { plain: true });
+          this.between(twist, [D * 0.52, tH * 0.98, s * W * 0.3], [D * 0.52, tH * 0.28, -s * W * 0.3], 2.4, strap, { plain: true });
+          this.between(twist, [-D * 0.52, tH * 0.98, s * W * 0.3], [-D * 0.52, tH * 0.28, -s * W * 0.3], 2.4, strap, { plain: true });
+        }
+        this.part(twist, G.box(3, 7, 7), '#c8ccd2', D * 0.56, tH * 0.63, 0, { plain: true });
+        for (const z of [-0.36, -0.14, 0.14, 0.36]) this.part(body, G.box(7, 9, 7), U.shade(strap, -0.12), hipD * 0.5 + 2, tH * 0.1 - 1, z * d.tBot);
       } else if (creature) {
         this.part(twist, G.ell(D * 0.36, tH * 0.44, d.tBot * 0.36), c.belly || '#f4e3b0', D * 0.24, tH * 0.42, 0, { plain: true });
       } else if (chest === 'void') {
@@ -314,7 +336,7 @@
 
       // ---------------------------------------------------------- cou et tête
       const neckR = Math.max(4, d.armW * 0.48) * (d.neck > 12 ? 1.3 : 1);
-      this.between(twist, [0, tH - 3, 0], [0, tH + d.neck + d.head * 0.3, 0], neckR, creature || L.head === 'psy' || L.head === 'cat' ? skin : (L.head === 'ninja' ? (c.mask || top) : skin));
+      this.between(twist, [0, tH - 3, 0], [0, tH + d.neck + d.head * 0.3, 0], neckR, creature || L.head === 'psy' || L.head === 'cat' ? skin : (L.head === 'ninja' || L.head === 'merc' ? (c.mask || top) : skin));
       const headG = this.headG = grp(twist, 0, tH, 0);
       const head = this.head = grp(headG, 0, d.neck + d.head * 0.85, 0);
       this.buildHead(head, d.head, c, skin);
@@ -342,6 +364,27 @@
         if (K.inner) this.part(this.cape, G.taper(2.8, W * 0.67, 2.8, W * 0.66, 5), K.inner, 0, -len + 2, 0, { plain: true });
       }
       if (L.wings) this.buildWings(twist, D, tH, W, skin);
+      if (L.tails) {
+        // basques de l'habit, qui flottent derrière les jambes
+        const K = L.tails, len = K.len || 44;
+        this.tails = grp(body, -hipD * 0.42, 3, 0);
+        for (const s of [1, -1]) {
+          const fl = this.part(this.tails, G.taper(2.2, d.tBot * 0.2, 2.6, d.tBot * 0.26, len), K.color, 0, -len / 2, s * d.tBot * 0.24);
+          fl.rotation.x = -s * 0.1;
+        }
+        this.part(this.tails, G.sphere(1.8), c.accent || '#d4a017', -2.6, -4, d.tBot * 0.1, { plain: true });
+        this.part(this.tails, G.sphere(1.8), c.accent || '#d4a017', -2.6, -4, -d.tBot * 0.1, { plain: true });
+      }
+      if (L.backBlades) {
+        // deux fourreaux croisés dans le dos
+        for (const s of [1, -1]) {
+          const g = grp(twist, -D * 0.5 - 5 - (s > 0 ? 0 : 3), tH * 0.56, 0);
+          g.rotation.x = s * 0.62;
+          this.part(g, G.box(3.4, 74, 5.5), '#1a1a1e', 0, 0, 0);
+          this.part(g, G.cyl(5.5, 5.5, 2.2, 10), '#d4a017', 0, 38.5, 0, { plain: true });
+          this.part(g, G.cyl(2.3, 2.3, 22, 8), '#2a2a30', 0, 50, 0);
+        }
+      }
 
       // ---------------------------------------------------------- bras
       this.arms = [];
@@ -383,6 +426,11 @@
           this.part(shin, G.capsule(lw * 0.54, d.shin * 0.3), top, 0, -d.shin * 0.38, 0);
         }
         this.part(shin, G.ell(lw * 0.95, lw * 0.44, lw * 0.56), bootCol, lw * 0.45, -d.shin + lw * 0.08, 0);
+        if (L.holsters) {
+          this.part(thigh, G.box(7, 17, 5), '#2a2a30', 0, -d.thigh * 0.42, s * lw * 0.56);
+          this.part(thigh, G.box(5, 7, 3.4), '#55585f', 1, -d.thigh * 0.42 + 11, s * lw * 0.6, { plain: true });
+          this.part(thigh, G.taper(lw * 0.54, lw * 0.54, lw * 0.56, lw * 0.56, 4), c.belt || '#6b5a3a', 0, -d.thigh * 0.3, 0, { plain: true });
+        }
         this.legs.push({ thigh, shin });
       }
       if (L.robe) {
@@ -521,7 +569,14 @@
         } else if (L.awaken && L.hair === 'bald') {
           this.hairA = this.hair(hd, r, 'golden', L.awakenHair || '#ffd84a'); this.hairA.visible = false;
         }
-        if (L.beard) {
+        if (L.beard === 'full') {
+          // barbe fournie qui entoure la mâchoire
+          const bc = c.beard || '#e8e8ee';
+          this.part(hd, G.ell(0.74 * r, 0.7 * r, 0.82 * r), bc, 0.3 * r, -0.78 * r, 0);
+          this.part(hd, G.ell(0.42 * r, 0.5 * r, 0.5 * r), bc, 0.52 * r, -1.25 * r, 0);
+          for (const s of [1, -1]) this.part(hd, G.ell(0.2 * r, 0.1 * r, 0.3 * r), bc, 0.98 * r, -0.36 * r, s * 0.24 * r, { plain: true, rx: s * 0.35 });
+          if (this.mouth) this.mouth.position.x = 1.04 * r;
+        } else if (L.beard) {
           this.part(hd, G.cone(0.62 * r, 2.3 * r, 8), c.beard || '#e8e8ee', 0.5 * r, -1.55 * r, 0, { rz: PI - 0.12 });
           this.part(hd, G.box(0.16 * r, 0.16 * r, 0.8 * r), c.beard || '#e8e8ee', 0.95 * r, -0.4 * r, 0, { plain: true });
         }
@@ -548,7 +603,62 @@
           this.part(hd, G.taper(r * 1.14, r * 1.14, r * 1.1, r * 1.1, 0.18 * r), c.accent || '#d4a017', 0, -0.12 * r, 0, { plain: true });
           this.part(hd, G.shell(r * 1.5, -1.25, 2.5, 1.5, 0.75), hc, 0.08 * r, 0, 0, { double: true });
           this.part(hd, G.torus(0.95 * r, 0.09 * r, PI), c.accent || '#d4a017', 0.85 * r, 0.75 * r, 0, { ry: PI / 2 });
+        } else if (L.hat === 'bicorne') {
+          // bicorne porté « en bataille » : large d'une épaule à l'autre, pointes tombantes
+          const hc = c.hat || '#16161a';
+          const hat = grp(hd, -0.05 * r, 0.02 * r, 0);
+          hat.rotation.set(0, -0.6, 0.06);
+          this.part(hat, G.ell(0.86 * r, 0.5 * r, 0.98 * r), hc, 0, 0.72 * r, 0);
+          for (const s of [1, -1]) {
+            const lobe = this.part(hat, G.ell(0.44 * r, 0.6 * r, 1.12 * r), hc, 0, 0.98 * r, s * 0.84 * r);
+            lobe.rotation.x = s * 0.36;
+          }
+          this.part(hat, G.ell(0.5 * r, 0.62 * r, 0.9 * r), hc, 0, 1.12 * r, 0);
+          // cocarde tricolore
+          const ck = grp(hat, 0.5 * r, 1.12 * r, 0.42 * r);
+          this.part(ck, G.ell(0.05 * r, 0.24 * r, 0.24 * r), '#c8202a', 0, 0, 0, { plain: true });
+          this.part(ck, G.ell(0.05 * r, 0.16 * r, 0.16 * r), '#f4f1e8', 0.03 * r, 0, 0, { plain: true });
+          this.part(ck, G.ell(0.05 * r, 0.08 * r, 0.08 * r), '#2a4ab0', 0.06 * r, 0, 0, { plain: true });
+        } else if (L.hat === 'laurel') {
+          // couronne de laurier dorée
+          const gold = c.accent || '#d4a017';
+          const cr = grp(hd, -0.05 * r, 0.42 * r, 0);
+          cr.rotation.z = 0.3;
+          this.part(cr, G.torus(1.05 * r, 0.07 * r), gold, 0, 0, 0, { rx: PI / 2, plain: true });
+          for (let i = 0; i < 12; i++) {
+            const a = 0.5 + (i / 11) * (PI * 2 - 1.0);
+            const leaf = this.part(cr, G.ell(0.26 * r, 0.1 * r, 0.11 * r), gold, Math.cos(a) * 1.08 * r, 0.14 * r, Math.sin(a) * 1.08 * r);
+            leaf.rotation.set(0, -a + (a < PI ? 1 : -1) * 1.1, 0.5);
+          }
+        } else if (L.hat === 'bearskin') {
+          // bonnet à poil des grenadiers
+          const hc = c.hat || '#16161a';
+          this.part(hd, G.capsule(0.98 * r, 1.0 * r), hc, -0.04 * r, 1.25 * r, 0);
+          this.part(hd, G.ell(0.12 * r, 0.42 * r, 0.42 * r), c.accent || '#d4a017', 0.92 * r, 0.9 * r, 0, { plain: true });
+          this.part(hd, G.capsule(0.16 * r, 0.9 * r), '#c8202a', 0, 1.7 * r, 0.98 * r);
         }
+        return;
+      }
+      if (H === 'merc') {
+        // cagoule intégrale : grands contours d'yeux sombres, regard blanc sans pupille
+        const mask = c.mask || '#b3141c', dark = c.accent || '#1a1a1e';
+        this.part(hd, G.sphere(r), mask, 0, 0, 0);
+        this.part(hd, G.ell(0.7 * r, 0.56 * r, 0.66 * r), mask, 0.26 * r, -0.44 * r, 0);
+        const X = new T3.Vector3(1, 0, 0);
+        for (const s of [1, -1]) {
+          const n = new T3.Vector3(0.8, 0.14, s * 0.5).normalize();
+          const g = grp(hd, n.x * r, n.y * r, n.z * r);
+          g.quaternion.setFromUnitVectors(X, n);
+          const patch = this.part(g, G.ell(0.06 * r, 0.4 * r, 0.25 * r), dark, 0, 0.02 * r, 0, { mat: this.glowMat(dark, 1) });
+          patch.rotation.x = s * 0.3;
+          const eye = this.part(g, G.ell(0.07 * r, 0.1 * r, 0.17 * r), '#ffffff', 0.02 * r, 0, 0, { mat: this.glowMat(c.eye || '#ffffff', 1) });
+          eye.rotation.x = -s * 0.38;
+        }
+        // couture au sommet et nœud du masque qui flotte derrière
+        this.part(hd, G.torus(1.0 * r, 0.035 * r, PI), dark, 0, 0, 0, { plain: true });
+        this.band = grp(hd, -0.98 * r, 0.1 * r, 0);
+        this.part(this.band, G.box(0.7 * r, 0.16 * r, 0.08 * r), mask, -0.35 * r, 0, 0.1 * r);
+        this.part(this.band, G.box(0.55 * r, 0.16 * r, 0.08 * r), mask, -0.28 * r, -0.1 * r, -0.1 * r);
         return;
       }
       if (H === 'knight') {
@@ -722,6 +832,19 @@
           this.part(g, G.box(3, len * 0.8, 5), '#c9a227', -2, -8 - len * 0.4, 0, { plain: true });
           this.part(g, G.cyl(2.6, 2.6, 22, 8), '#2a2a2a', 0, 4, 0);
           break;
+        case 'bolt': {
+          // éclair tenu à la main : cœur blanc, halo de la couleur de l'arme
+          const col = w.color || '#ffe14a';
+          this.blade = grp(g);
+          const pts = [[0, 12, 0], [6, -len * 0.22, 0], [-6, -len * 0.42, 0], [6, -len * 0.68, 0], [0, -len, 0]];
+          const core = this.glowMat('#ffffff', 1), halo = this.glowMat(col, 0.55, true), halo2 = this.glowMat(col, 0.22, true);
+          for (let i = 0; i < pts.length - 1; i++) {
+            this.between(this.blade, pts[i], pts[i + 1], 2.4, '#ffffff', { mat: core });
+            this.between(this.blade, pts[i], pts[i + 1], 5.5, col, { mat: halo });
+            this.between(this.blade, pts[i], pts[i + 1], 10, col, { mat: halo2 });
+          }
+          break;
+        }
         case 'shield': {
           this.shield = grp(g);
           this.part(this.shield, G.cyl(27, 27, 5, 18), w.color || '#1f4fa8', 0, 6, -9, { rx: PI / 2 });
@@ -771,6 +894,7 @@
       }
       const vx = U.clamp((o.vx || 0) * 0.05, -0.7, 0.9);
       if (this.cape) this.cape.rotation.z = p.torso * 0.9 - 0.1 - Math.max(0, vx) + Math.sin(t * 3.2) * 0.04;
+      if (this.tails) this.tails.rotation.z = -0.1 - Math.max(0, vx) * 0.9 - Math.max(0, -(J.rot || 0)) * 0.3 + Math.sin(t * 3.4) * 0.05;
       if (this.scarf) this.scarf.rotation.z = p.torso - 0.25 - Math.max(0, vx) * 1.3 + Math.sin(t * 6) * 0.1;
       if (this.band) this.band.rotation.z = -0.2 - Math.max(0, vx) + Math.sin(t * 9) * 0.15;
       if (this.plume) this.plume.rotation.z = Math.sin(t * 5) * 0.08;

@@ -1,6 +1,6 @@
 # ⚔️ Choc des Légendes — version iPhone
 
-Jeu de combat **en 3D** : 17 combattants, 10 arènes, mode Histoire, Arcade, Survie, Entraînement.
+Jeu de combat **en 2D aux graphismes 3D** : 20 combattants, 10 arènes, mode Histoire, Arcade, Survie, Entraînement.
 Cette version se joue **sans installation** : pas d'App Store, pas de Mac, pas de compte Apple,
 pas de limite de 7 jours.
 
@@ -8,13 +8,25 @@ pas de limite de 7 jours.
 
 **https://arstelvio.github.io/iCombat/**
 
-## 🧊 Nouveau : le jeu est en 3D
+## 🆕 Trois nouveaux combattants
 
-- **Arènes et combattants en 3D**, style dessin animé, avec une caméra qui tourne autour du combat et plonge
-  en gros plan pour les attaques Ultimes.
-- **On se déplace librement** : pousse le joystick dans la direction où tu veux aller. Vers le haut ou le bas de
-  l'écran, tu tournes autour de ton adversaire et tu **esquives** ses attaques.
-- **Nouveau bouton SAUT**. Le joystick sur le côté ou en arrière change tes coups (lanceur, balayette…).
+Jouables tout de suite, sans rien débloquer :
+
+- **🎩 Napoléon** — sabre d'officier, pistolet, grenadiers de la Vieille Garde et, en Ultime, la Grande Batterie de canons.
+- **🌩️ Zeus** — le roi de l'Olympe lance la foudre, se protège avec son égide et déchaîne l'orage.
+- **🩸 Rouge Immortel** — un mercenaire masqué et bavard, à deux lames : ses blessures se referment toutes seules.
+
+Napoléon et le Rouge Immortel sont les deux **champions** du jeu : un peu plus forts que tous les autres.
+
+## 🧊 Des combats en 2D dans un décor en 3D
+
+- **Arènes et combattants en 3D**, style dessin animé, avec une caméra de côté qui plonge en gros plan pour
+  les attaques Ultimes.
+- **On se déplace en 2D** avec le joystick : à gauche et à droite pour avancer ou reculer, vers le haut pour
+  sauter (il y a aussi un bouton **SAUT**), vers le bas pour s'accroupir.
+- **Deux gardes** : debout avec GARDE, c'est la **garde haute** ; joystick vers le bas + GARDE, c'est la
+  **garde basse**, qui arrête les coups bas et les balayettes.
+- Le joystick change aussi tes coups : vers le haut + LOURD = lanceur, vers le bas + LOURD = balayette…
 - L'**École du Maître** t'apprend tout ça en 10 leçons.
 
 ## 🌟 Pour les jeunes héros

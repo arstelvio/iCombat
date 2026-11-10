@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Choc des Légendes",
   "short_name": "Légendes",
-  "description": "Jeu de combat 2D : 17 combattants, 10 arènes, mode Histoire. Fonctionne hors ligne.",
+  "description": "Jeu de combat aux graphismes 3D : 20 combattants, 10 arènes, mode Histoire. Fonctionne hors ligne.",
   "lang": "fr",
   "dir": "ltr",
   "start_url": "./",

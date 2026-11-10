@@ -7,7 +7,7 @@
  * se remplit au fil des chargements.
  */
 'use strict';
-const VERSION = '3fca7d841426';
+const VERSION = 'ec97b26759c2';
 const ASSETS = [
   "./",
   "css/style.css",

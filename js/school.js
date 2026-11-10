@@ -1,19 +1,23 @@
 /* Choc des Légendes — l'École du Maître : tutoriel guidé et lu à voix haute pour apprendre à combattre
-   (se déplacer dans l'arène 3D, tourner autour de l'adversaire, sauter, frapper, se protéger, charger son aura) */
+   (avancer, reculer, sauter, frapper, garde haute et garde basse, charger son aura) */
 (function (C) {
   'use strict';
   const U = C.U;
 
-  // Partenaire d'entraînement : immobile, ou qui avance et frappe pendant la leçon de garde
+  // Partenaire d'entraînement : immobile, ou qui avance et frappe pendant les leçons de garde
+  // (« attack » : coups normaux à bloquer debout ; « low » : coups bas à bloquer accroupi)
   class Sparring {
     constructor() { this.isCPU = true; this.mode = 'stand'; this.t = 0; }
     get(f) {
       this.t++;
-      const out = { l: 0, r: 0, u: 0, d: 0, a: 0, b: 0, c: 0, g: 0, s: 0, t: 0 };
-      if (this.mode !== 'attack') return out;
+      const out = { l: 0, r: 0, u: 0, d: 0, a: 0, b: 0, c: 0, g: 0, s: 0, t: 0, md: 0 };
+      if (this.mode !== 'attack' && this.mode !== 'low') return out;
       const o = f.opp, d = o.x - f.x;
-      if (Math.abs(d) > 150) out[d > 0 ? 'r' : 'l'] = 1;
-      else if (this.t % 55 === 0) out.a = 1;
+      // il s'approche jusqu'à être sûr de toucher
+      const m = f.moves[this.mode === 'low' ? 'DL' : 'L1'], box = m && m.hits && m.hits[0].box;
+      const reach = box ? (box[0] + box[2]) * f.size + 14 : 120;
+      if (Math.abs(d) > reach) out[d > 0 ? 'r' : 'l'] = 1;
+      else if (this.t % 55 === 0) { out.a = 1; if (this.mode === 'low') out.md = 1; }
       return out;
     }
   }
@@ -24,13 +28,10 @@
 
   const LESSONS = [
     { hl: 'stick',
-      text: () => 'Bienvenue, jeune héros ! Je suis Maître Shen. ' + (touch() ? 'Pose ton pouce à gauche de l\'écran et pousse-le dans la direction où tu veux aller. Cours dans l\'arène !' : 'Cours dans l\'arène avec les touches Z, Q, S, D ou les flèches.'),
-      check: (s, b) => { const w = b.world(b.f[0].x, b.f[0].zl); return Math.hypot(w[0] - s.w0[0], w[1] - s.w0[1]) > 130; } },
-    { hl: 'stick',
-      text: () => 'L\'arène est en trois dimensions ! Pousse ' + (touch() ? 'ton pouce vers le haut ou vers le bas de l\'écran' : 'vers le haut ou vers le bas') + ' pour tourner autour de ton adversaire : c\'est comme ça qu\'on esquive.',
-      check: (s, b) => b.turned - s.turn0 > 0.7 },
+      text: () => 'Bienvenue, jeune héros ! Je suis Maître Shen. ' + (touch() ? 'Pose ton pouce à gauche de l\'écran et pousse-le vers la droite ou vers la gauche pour avancer et reculer.' : 'Avance et recule avec les touches Q et D ou les flèches.'),
+      check: (s, b) => Math.abs(b.f[0].x - s.x0) > 130 },
     { hl: 'j',
-      text: () => 'Bien ! Pour sauter, appuie sur ' + K('SAUT', 'Espace') + '.',
+      text: () => 'Bien ! Pour sauter, ' + (touch() ? 'pousse ton pouce vers le haut, ou appuie sur SAUT.' : 'appuie sur la touche Espace ou sur la flèche du haut.'),
       check: (s, b) => !b.f[0].onGround },
     { hl: 'a',
       text: () => 'Approche-toi et frappe avec ' + K('LÉGER', 'J') + ', trois fois de suite : c\'est un combo !',
@@ -41,9 +42,12 @@
     { hl: 'c',
       text: () => 'Lance une technique spéciale avec ' + K('SPÉCIAL', 'L') + ' ! Elle change si tu pousses le joystick en même temps.',
       check: (s) => s.kinds.special },
-    { hl: 'g', attack: true,
-      text: () => 'Attention, il va t\'attaquer ! Reste appuyé sur ' + K('GARDE', 'I') + ' pour bloquer ses coups.',
+    { hl: 'g', attack: 'attack',
+      text: () => 'Attention, il va t\'attaquer ! Reste appuyé sur ' + K('GARDE', 'I') + ' pour bloquer ses coups : c\'est la garde haute.',
       check: (s, b) => b.f[0].matchStats.blocks + b.f[0].matchStats.parries - s.blocks0 >= 2 },
+    { hl: 'g', attack: 'low',
+      text: () => 'Maintenant, il vise tes jambes ! ' + (touch() ? 'Pousse ton pouce vers le bas pour t\'accroupir' : 'Accroupis-toi avec la touche S ou la flèche du bas') + ', et reste appuyé sur ' + K('GARDE', 'I') + ' : c\'est la garde basse.',
+      check: (s, b) => (b.f[0].matchStats.lowBlocks || 0) - s.low0 >= 2 },
     { hl: 's', meter: 0,
       text: () => 'Maintenant, le secret des grands guerriers : maintiens ' + K('ULTRA', 'O') + ' appuyé pour charger ton aura, jusqu\'à remplir une barre !',
       check: (s, b) => b.f[0].meter >= 100 },
@@ -103,8 +107,8 @@
       const b = this.b, p = b.f[0];
       this.idx = i;
       const L = LESSONS[i];
-      this.s = { w0: b.world(p.x, p.zl), turn0: b.turned, hits0: p.matchStats.hits, blocks0: p.matchStats.blocks + p.matchStats.parries, seen: {}, kinds: {} };
-      this.sparring.mode = L.attack ? 'attack' : 'stand';
+      this.s = { x0: p.x, hits0: p.matchStats.hits, blocks0: p.matchStats.blocks + p.matchStats.parries, low0: p.matchStats.lowBlocks || 0, seen: {}, kinds: {} };
+      this.sparring.mode = L.attack || 'stand';
       if (L.meter != null) p.meter = L.meter;
       if (L.meterMin != null) p.meter = Math.max(p.meter, L.meterMin);
       C.Input.highlight = L.hl;

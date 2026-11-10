@@ -28,7 +28,7 @@
     kairo: [1.2, 1.08], zarkan: [0.9, 1.02], aldaron: [0.7, 0.88], godefroy: [0.8, 0.95], kage: [0.95, 1.05],
     takeda: [0.85, 0.92], cassius: [0.65, 0.95], leo: [1.35, 1.1], mordrak: [0.6, 0.9], kael: [1.0, 1.0],
     noctis: [0.45, 0.85], malvar: [0.5, 0.85], tk7: [1.1, 1.15], pyrodrake: [0.4, 0.9], lumi: [1.9, 1.2],
-    psykron: [0.7, 0.9], omega: [0.35, 0.8]
+    psykron: [0.7, 0.9], omega: [0.35, 0.8], napoleon: [0.85, 1.05], zeus: [0.4, 0.86], rouge: [1.25, 1.2]
   };
 
   V.enabled = () => V.ok && C.Store && C.Store.settings.voice !== false;

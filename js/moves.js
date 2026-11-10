@@ -143,7 +143,7 @@
       noGrav: o.air ? [0, st + 8 + extra] : null,
       ai: o.ai || { role: 'zone', min: 220, max: 2000 },
       cancel: o.cancel || null,
-      invuln: o.invuln, showWeapon: o.showWeapon, needWeapon: o.boomerang ? true : undefined,
+      invuln: o.invuln, showWeapon: o.showWeapon, hideWeapon: o.hideWeapon, needWeapon: o.boomerang ? true : undefined,
       // Règle classique : un seul projectile (technique spéciale) à l'écran par combattant
       cond: (o.kind || 'special') === 'special' ? (f, b) => !b.entities.some((e) => e.isProjectile && e.owner === f && !e.dead && !e.fromSuper) : undefined
     };
@@ -435,7 +435,10 @@
       vel: [[6, o.vx || 4, -(o.up || 14)]],
       onStart: (f) => { if (!f.onGround) f.mf = 17; },
       onFrame: (f, b, fr) => {
-        if (fr === 18) { f.vy = 24; f.vx = f.facing * (o.vx || 4) * 0.6; play('whoosh_heavy'); }
+        // le bond va toujours vers l'avant, quelle que soit la direction tenue au joystick
+        if (fr > 6 && fr < 18) f.vx = f.facing * (o.vx || 4) * f.speedMul();
+        if (fr === 18) { f.vy = 24; play('whoosh_heavy'); }
+        if (fr >= 18) f.vx = f.facing * (o.vx || 4) * 0.6;
         if (fr > 18 && fr % 2 === 0) b.addEntity(new Afterimage(f, 0.35, o.color || f.ch.aura));
       },
       hits: [hit({ f0: 18, f1: 60, box: [-40, -150, 130, 160], dmg: o.dmg || 70, stun: 20, kb: [6, 9], level: 'overhead', hitstop: 10, sfx: 'hit_heavy', spike: true })],
@@ -770,8 +773,10 @@
       X: stream({ name: 'Pouvoir Absolu', kind: 'ultimate', cost: 300, cine: true, style: 'lightning', len: 1500, width: 150, dur: 80, dmg: 16, interval: 4, color: '#9fc4ff', joint: 'hands', startup: 16, ready: 'cast_r', pose: 'cast', sfx: 'lightning', invuln: [0, 96], finalHit: { dmg: 30, kb: [16, -12], launch: true, kd: true, hitstop: 14, sfx: 'ko', juggle: 0 }, ai: { role: 'finisher', min: 0, max: 9999 } })
     }),
     tk7: () => ({
-      N: projectile({ name: 'Tir de Blaster', vis: 'laser', count: 3, every: 6, startup: 9, recovery: 24, speed: 22, dmg: 17, r: 9, w: 40, h: 16, joint: 'hand2', ox: 70, oy: 0, randomY: 1.6, ready: 'cast1_r', pose: 'cast1', sfx: 'blaster', fixedColor: '#ff3030', trail: false, air: true, airAngle: 0.35 }),
-      F: { name: 'Roulade Tactique', kind: 'special', anim: [['crouch', 3], ['roll1', 1], ['roll2', 18, 'lin'], ['crouch', 8]], frames: 30, vel: [[3, 13, null, 21], [22, 1, null]], projInvuln: [2, 22], through: [3, 22], sfx: [[3, 'dash']], ai: { role: 'mobility', min: 150, max: 600 } },
+      N: projectile({ name: 'Tir de Blaster', vis: 'laser', count: 3, every: 6, startup: 9, recovery: 19, speed: 22, dmg: 19, r: 9, w: 40, h: 16, joint: 'hand2', ox: 70, oy: 0, randomY: 1.6, ready: 'cast1_r', pose: 'cast1', sfx: 'blaster', fixedColor: '#ff3030', trail: false, air: true, airAngle: 0.35 }),
+      // Roulade vers l'arrière : elle esquive les projectiles et remet de la distance.
+      // cooldown : une demi-seconde (30 images) d'attente après la roulade avant de pouvoir en refaire une.
+      F: { name: 'Roulade Tactique', kind: 'special', anim: [['crouch', 3], ['roll2', 1], ['roll1', 18, 'lin'], ['crouch', 8]], frames: 30, vel: [[3, -13, null, 21], [22, -1, null]], projInvuln: [2, 22], cooldown: 30, sfx: [[3, 'dash']], ai: { role: 'escape', min: 0, max: 240 } },
       U: rising({ name: 'Propulseur', dmg: 70, pose: 'kick', ready: 'crouch', vy: 18, vx: 4, trail: true, trailColor: '#ff6a2a', fx: (f) => FX.ember(f.x - f.facing * 15, f.y - 60, '#ffb000', 0, 6, 10, 14) }),
       D: projectile({ name: 'Détonateur Thermique', vis: 'detonator', startup: 12, recovery: 20, speed: 6.5, vy: -12, grav: 0.55, dmg: 60, r: 9, joint: 'hand1', ready: 'b_over_r', pose: 'toss', sfx: 'whoosh', explode: { r: 85, hit: { dmg: 70, kb: [8, -10], launch: true, kd: true }, color: '#ffd23f' }, life: 100, trail: false, fixedColor: '#ffd23f', ai: { role: 'zone', min: 200, max: 500 } }),
       S: {
@@ -779,8 +784,10 @@
         spawn: [{ f: 14, fn: (f, b) => {
           [80, 150].forEach((d, i) => b.addEntity(new (Proj().Summon)(b, f, { x: U.clamp(f.x - f.facing * d, b.stage.left + 40, b.stage.right - 40), zl: i ? 120 : -120, life: 170, every: 16 + i * 3, costume: f.cfg.costume || 0,
             fire: (s) => {
+              // les soldats visent l'adversaire, même s'il n'est plus sur l'axe
+              const t = f.opp, n = Math.max(8, Math.abs(t.x - s.x) / 21);
               play('blaster');
-              b.addEntity(new (Proj().Projectile)(b, f, { kind: 'laser', x: s.x + s.facing * 60, zl: s.zl, track: 5, y: -128, vx: s.facing * 21, vy: U.rand(-1.4, 1.4), r: 9, w: 40, h: 16, life: 100, color: '#ff3030', trail: false, hit: { dmg: 16, stun: 16, kb: [4, 0], chip: 0.15 } }));
+              b.addEntity(new (Proj().Projectile)(b, f, { kind: 'laser', x: s.x + s.facing * 60, zl: s.zl, vzl: (t.zl - s.zl) / n, track: 3, y: -128, vx: s.facing * 21, vy: U.rand(-1.4, 1.4), r: 9, w: 40, h: 16, life: 100, color: '#ff3030', trail: false, hit: { dmg: 18, stun: 16, kb: [4, 0], chip: 0.15 } }));
             } })));
         } }],
         ai: { role: 'zone', min: 0, max: 9999 }
@@ -806,7 +813,7 @@
       N: stream({ name: 'Lance-Flammes', style: 'fire', len: 290, width: 70, dur: 36, dmg: 10, interval: 4, color: '#ff7a00', joint: 'mouth', ready: 'crouch', pose: 'cast1', sfx: 'fire', air: true, onFrame: (f, b, fr) => { if (fr === 6) play('roar'); } }),
       F: dashStrike({ name: 'Charge Aérienne', startup: 10, dash: 18, speed: 16, vy: 0, dmg: 74, ready: 'jump', pose: 'fly', anim: [['jump', 10], ['fly', 18], ['fall', 14]], air: true, kb: [13, -6], launch: true, trailColor: '#ff8a1a', recovery: 14 }),
       U: rising({ name: 'Envol', dmg: 72, ready: 'crouch', pose: 'fly', vy: 20, vx: 3, multi: 6, trail: true, trailColor: '#ff8a1a' }),
-      D: groundPound({ name: 'Séisme', up: 13, vx: 3, dmg: 72, shock: 60, color: '#c98a4a' }),
+      D: groundPound({ name: 'Séisme', up: 13, vx: 8, dmg: 72, shock: 60, color: '#c98a4a' }),
       S: projectile({ name: 'Déflagration', kind: 'super', cost: 100, cine: true, vis: 'firestar', startup: 18, recovery: 20, speed: 11, dmg: 90, r: 30, joint: 'mouth', ready: 'crouch', pose: 'cast1', sfx: 'roar', fixedColor: '#ff7a00', strength: 5, explode: { r: 110, hit: { dmg: 70, kb: [9, -12], launch: true, kd: true }, color: '#ff6a00' }, invuln: [0, 18], ai: { role: 'zone', min: 0, max: 9999 } }),
       X: rushLock({ name: 'Rage du Dragon', hits: 8, totalDmg: 340, seq: 70, dash: 20, speed: 20, ready: 'jump', pose: 'fly', anim: [['jump', 6], ['fly', 20], ['fly', 70], ['idle', 28]], color: '#ff6a00', air: true,
         hold: (f, a, b, k) => {
@@ -865,6 +872,87 @@
       X: beamUlt({ name: 'Fin des Mondes', totalDmg: 360, width: 160, color: '#ff3df2', style: 'ki', ready: 'cast_up', joint: 'hands' })
     })
   };
+
+  // --- Napoléon : sabre d'officier, pistolet, grenadiers de la Garde et artillerie
+  const GOLD = '#ffd23f';
+  SPECIALS.napoleon = () => ({
+    N: projectile({ name: "Pistolet d'Officier", vis: 'balle', startup: 15, recovery: 26, speed: 18, dmg: 42, r: 8, w: 34, h: 16, joint: 'hand2', ox: 14, ready: 'p_aim_r', pose: 'p_aim', sfx: 'bullet', hitSfx: 'hit_heavy', fixedColor: '#ffe9a8', muzzle: true, trail: false, strength: 2 }),
+    F: dashStrike({ name: 'Charge de Cavalerie', startup: 11, dash: 15, speed: 15, dmg: 68, armor: 1, ready: 'b_iai_r', pose: 'b_dash', kb: [12, -4], hitSfx: 'hit_slash', spark: 'slashbig', trailColor: GOLD,
+      onFrame: (f, b, fr) => { if (fr >= 10 && fr < 25 && fr % 4 === 0) play('footstep'); } }),
+    U: rising({ name: "Soleil d'Austerlitz", dmg: 88, ready: 'b_up_r', pose: 'b_upslash', vy: 16, hitSfx: 'hit_slash', spark: 'slashbig',
+      fx: (f) => { FX.glow(f.x + f.facing * 20, f.y - 150, 190, GOLD, 6); FX.slashArc(f.x + f.facing * 30, f.y - 140, f.facing, 92, 1.2, -1.6, '#fff2c0', 10, 6); } }),
+    D: counter({ name: "Carré d'Infanterie", pose: 'block', color: GOLD, window: 24 }),
+    _CS: counterStrike({ name: 'Riposte Impériale', anim: [['b_over_r', 3], ['b_over', 3], ['b_over', 6], ['idle', 12]], dmg: 86, sfx: 'hit_slash', spark: 'slashbig' }),
+    S: {
+      name: 'La Vieille Garde', kind: 'super', cost: 100, cine: true, anim: [['taunt', 20], ['idle', 16]], frames: 36, invuln: [0, 20],
+      spawn: [{ f: 14, fn: (f, b) => {
+        [90, 160].forEach((d, i) => b.addEntity(new (Proj().Summon)(b, f, { char: 'grognard', x: U.clamp(f.x - f.facing * d, b.stage.left + 40, b.stage.right - 40), zl: i ? 125 : -125, life: 165, every: 26 + i * 4,
+          fire: (g) => {
+            // les grenadiers visent : la balle part vers l'adversaire, pas seulement le long de l'axe
+            const t = f.opp, n = Math.max(8, Math.abs(t.x - g.x) / 22);
+            play('bullet');
+            FX.glow(g.x + g.facing * 78, -128, 60, '#ffe9a8', 6);
+            FX.smoke(g.x + g.facing * 84, -130, 10, '#d8d8d8', 22, g.facing * 1.2, -0.4);
+            b.addEntity(new (Proj().Projectile)(b, f, { kind: 'balle', x: g.x + g.facing * 70, zl: g.zl, vzl: (t.zl - g.zl) / n, track: 3, y: -128, vx: g.facing * 22, vy: U.rand(-1, 1), r: 8, w: 34, h: 16, life: 100, color: '#ffe9a8', trail: false, hit: { dmg: 17, stun: 16, kb: [5, 0], chip: 0.15 } }));
+          } })));
+        FX.text(f.x, f.y - f.height() - 40, 'LA GARDE !', GOLD, 34, 50);
+      } }],
+      ai: { role: 'zone', min: 0, max: 9999 }
+    },
+    X: Object.assign(rain({ name: "Grande Batterie d'Austerlitz", kind: 'ultimate', cost: 300, count: 12, every: 5, vis: 'boulet', color: '#ff9a3c', dmg: 27, r: 17, explode: 62, spread: 150, slant: 380, speed: 15, ready: 'taunt', pose: 'point', sfx: 'explosion', hitSfx: 'hit_heavy' }),
+      { showWeapon: true })
+  });
+
+  // --- Zeus : la foudre sous toutes ses formes
+  const BOLT = '#ffe14a';
+  const zap = (f, r) => FX.lightning(f.x + U.rand(-r, r), f.y - U.rand(40, 220), f.x + U.rand(-r, r), f.y - U.rand(10, 170), '#fff7b0', 2, 4);
+  SPECIALS.zeus = () => ({
+    N: projectile({ name: 'Foudre', vis: 'foudre', startup: 15, recovery: 25, speed: 17, dmg: 52, r: 14, w: 64, h: 26, joint: 'hand1', ready: 'cast1_r', pose: 'cast1', color: BOLT, fixedColor: BOLT, sfx: 'lightning', showWeapon: true, air: true, airAngle: 0.5, strength: 2 }),
+    F: dashStrike({ name: 'Poing du Tonnerre', startup: 12, dash: 14, speed: 16, dmg: 72, armor: 1, kb: [13, -5], launch: true, trailColor: BOLT, hitSfx: 'hit_heavy', spark: 'big',
+      onFrame: (f, b, fr) => { if (fr >= 11 && fr < 24 && fr % 3 === 0) zap(f, 50); } }),
+    U: Object.assign(pillars({ name: 'Colonne de Foudre', count: 1, from: 'self', first: 85, delay: 8, hold: 10, ready: 'crouch', pose: 'cast_up', width: 110, life: 16, interval: 5, dmg: 25, color: BOLT, style: 'lightning', impactSfx: 'lightning', sfx: 'lightning', invuln: [0, 11], ai: { role: 'anti', min: 0, max: 200 } }),
+      { showWeapon: true }),
+    D: reflector({ name: 'Égide', style: 'shield', pose: 'cast1', window: 24, color: '#ffe9a0' }),
+    S: Object.assign(pillars({ name: "Orage de l'Olympe", kind: 'super', cost: 100, cine: true, count: 3, gap: 0, stagger: 16, delay: 16, ready: 'cast1_r', pose: 'cast_up', width: 84, life: 16, interval: 4, dmg: 21, color: BOLT, style: 'lightning', lead: true, impactSfx: 'lightning', sfx: 'lightning', invuln: [0, 18], ai: { role: 'zone', min: 0, max: 9999 } }),
+      { showWeapon: true }),
+    X: Object.assign(pillars({ name: 'Colère de Zeus', kind: 'ultimate', cost: 300, cine: true, count: 1, delay: 30, hold: 48, ready: 'cast1_r', pose: 'cast_up', width: 230, life: 48, interval: 4, dmg: 29, color: BOLT, style: 'lightning', lead: true, impactSfx: 'lightning', sfx: 'lightning', invuln: [0, 62], hit: { chip: 0.35 }, ai: { role: 'finisher', min: 0, max: 9999 } }),
+      { showWeapon: true, aura: BOLT,
+        onFrame: (f, b, fr) => {
+          if (fr < 8 || fr > 92) return;
+          if (fr % 4 === 0) zap(f, 90);
+          // le ciel entier se déchaîne autour de la cible
+          if (fr > 44 && fr % 3 === 0) { const x = f.opp.x + U.rand(-330, 330); FX.lightning(x + U.rand(-40, 40), -900, x, 0, '#fff7b0', 3, 5); }
+          if (fr === 46 || fr === 62 || fr === 78) b.flash('#fff7b0', 0.4);
+        } })
+  });
+
+  // --- Rouge Immortel : deux lames, des gadgets et beaucoup trop de bavardage
+  const RED = '#ff3b3b';
+  const JOKES = ['PIF !', 'PAF !', 'ET HOP !', 'COUCOU !', 'OUPS !', 'TROP FACILE !', 'ENCORE !', 'TAC TAC !'];
+  SPECIALS.rouge = () => ({
+    N: projectile({ name: 'Pistolets Jumeaux', vis: 'balle', count: 4, every: 4, startup: 11, recovery: 25, speed: 20, dmg: 11, r: 7, w: 30, h: 14, joint: 'hands', ox: 16, randomY: 1.3, ready: 'cast_r', pose: 'cast', sfx: 'bullet', hitSfx: 'hit_light', fixedColor: '#ffe9a8', muzzle: true, trail: false, hideWeapon: true }),
+    F: teleport({ name: 'Passe-Passe', where: 'behind', gap: 10, after: 20, pose: 'crouch', endPose: 'b_side', color: '#b3141c', strike: { dmg: 46, box: [-10, -195, 125, 195], sfx: 'hit_slash', spark: 'slashbig' }, aiRole: 'approach' }),
+    U: rising({ name: 'Hélice de Lames', dmg: 76, pose: 'spin2', ready: 'crouch', multi: 5, vy: 18, vx: 3, trail: true, trailColor: RED, hitSfx: 'hit_slash', spark: 'slash', box: [-70, -225, 150, 225] }),
+    D: counter({ name: 'Trop lent !', pose: 'block', color: RED, window: 22,
+      onCounter: (f, a, b) => {
+        a.state = 'stun'; a.st = 0; a.stunTime = 24; a.move = null; a.vx = 0;
+        FX.smoke(f.x, f.y - 80, 50, '#b04040', 28);
+        FX.text(f.x, f.y - f.height() - 30, 'TROP LENT !', RED, 30, 40);
+        f.startMove(f.moves._CS);
+      } }),
+    _CS: counterStrike({ name: 'Coucou !', teleport: true, dmg: 78, anim: [['b_side_r', 3], ['b_side', 3], ['b_side', 6], ['idle', 12]], sfx: 'hit_slash', spark: 'slashbig' }),
+    S: projectile({ name: 'Grenades Surprises', kind: 'super', cost: 100, cine: true, vis: 'grenade', count: 3, every: 6, startup: 12, recovery: 20, speed: 8, vy: -11, spread: 2.2, grav: 0.55, dmg: 40, r: 9, joint: 'hand2', ready: 'b_over_r', pose: 'toss', sfx: 'whoosh',
+      explode: { r: 84, hit: { dmg: 52, kb: [8, -10], launch: true, kd: true }, color: '#ff9a3c' }, life: 100, trail: false, fixedColor: '#ff9a3c', invuln: [0, 14], ai: { role: 'zone', min: 120, max: 620 } }),
+    X: rushLock({ name: 'Carnage Maximum', hits: 12, totalDmg: 335, seq: 72, dash: 15, speed: 20, ready: 'b_iai_r', pose: 'b_dash', color: RED, hitSfx: 'hit_slash', spark: 'slashbig',
+      step: (f, a, b, k) => {
+        const side = (k / 5) % 2 < 1 ? 1 : -1;
+        f.x = a.x - side * 95; f.facing = side; f.y = -U.rand(0, 50);
+        b.addEntity(new Afterimage(f, 0.7, RED, 10, U.rand(-70, 70), -side));
+        FX.slashArc(a.x + U.rand(-25, 25), a.y - 105 + U.rand(-35, 35), side, 82, -2.2, 0.9, '#ff6a6a', 11, 8);
+        if (k % 10 === 0) FX.text(a.x + U.rand(-60, 60), a.y - 210 - U.rand(0, 50), U.choice(JOKES), '#ffffff', 28, 30);
+      },
+      finish: (f, a) => { f.y = 0; f.facing = a.x > f.x ? 1 : -1; FX.text(f.x, f.y - f.height() - 40, 'ET VOILÀ !', '#ffd23f', 36, 60); } })
+  });
 
   // Héros personnalisé (« Crée ton héros ») : la panoplie de son pouvoir, aux couleurs de son aura,
   // avec l'attaque ultime dont l'enfant a choisi le nom
@@ -989,8 +1077,8 @@
 
   // Liste des coups lisible (écran « Liste des coups »)
   const INPUT_NAMES = {
-    L1: 'Léger', L2: 'Léger ×2', L3: 'Léger ×3', H: 'Lourd', UH: 'Côté + Lourd', DL: 'Arrière + Léger', DH: 'Arrière + Lourd', AL: 'En l\'air : Léger', AH: 'En l\'air : Lourd',
-    GRAB: 'Saisie (près)', CHARGE: 'ULTRA maintenu', N: 'Spécial', F: 'Avant + Spécial', U: 'Côté + Spécial', D: 'Arrière + Spécial', S: 'ULTRA (1 barre)', S2: 'ULTRA (1 barre, éveillé)', X: 'ULTRA (3 barres)'
+    L1: 'Léger', L2: 'Léger ×2', L3: 'Léger ×3', H: 'Lourd', UH: 'Haut + Lourd', DL: 'Bas + Léger', DH: 'Bas + Lourd', AL: 'En l\'air : Léger', AH: 'En l\'air : Lourd',
+    GRAB: 'Saisie (près)', CHARGE: 'ULTRA maintenu', N: 'Spécial', F: 'Avant ou arrière + Spécial', U: 'Haut + Spécial', D: 'Bas + Spécial', S: 'ULTRA (1 barre)', S2: 'ULTRA (1 barre, éveillé)', X: 'ULTRA (3 barres)'
   };
   function moveList(charId) {
     const fake = { ch: C.Roster.get(charId) };

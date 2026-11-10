@@ -7,15 +7,16 @@
   const TIPS = [
     'Touchez GARDE juste avant un coup pour réussir une PARADE et contre-attaquer.',
     'Maintenez la direction opposée à l\'adversaire pour bloquer automatiquement.',
-    'L\'arène est en 3D : poussez le joystick vers le haut ou le bas de l\'écran pour tourner autour de l\'adversaire.',
-    'Un projectile arrive ? Courez sur le côté : il passera à côté de vous !',
+    'Joystick : gauche et droite pour avancer ou reculer, vers le haut pour sauter, vers le bas pour s\'accroupir.',
+    'Garde haute (debout) contre les coups normaux et plongeants ; garde basse (joystick vers le bas + GARDE) contre les coups bas.',
+    'Un projectile arrive ? Sautez par-dessus, ou gardez-vous !',
     'Une projection (SAISIE) passe à travers la garde. Appuyez sur SAISIE pour vous dégager !',
-    'Double-tapez vers l\'avant pour une ruée, vers l\'arrière pour un pas de recul, sur le côté pour un pas de côté éclair.',
+    'Double-tapez vers l\'avant pour une ruée, vers l\'arrière pour un pas de recul.',
     'Annulez vos coups normaux en techniques spéciales quand ils touchent.',
     'Avec 3 barres d\'ULTRA, déclenchez votre ULTIME : la caméra plonge sur votre héros !',
     'Bloquer trop longtemps use votre jauge de garde : attention à la GARDE BRISÉE !',
-    'Après un Lanceur (joystick sur le côté + LOURD), sautez pour poursuivre le combo en l\'air.',
-    'Les coups circulaires (joystick en arrière + LOURD) touchent même un adversaire qui tourne autour de vous.',
+    'Après un Lanceur (joystick vers le haut + LOURD), sautez pour poursuivre le combo en l\'air.',
+    'La Balayette (joystick vers le bas + LOURD) passe sous la garde haute et fait tomber l\'adversaire.',
     'Carotte et Légume peuvent se transformer grâce à l\'Éveil Doré (ULTRA avec 1 barre).',
     'Terminez les chapitres du mode Histoire pour débloquer de nouveaux combattants.',
     'Gagnez des orbes ◆ pour acheter costumes, arènes et combattants dans la Boutique.',
@@ -279,7 +280,7 @@
           h('div.logo-sub', null, 'Le tournoi des mondes')),
         h('div.press.blink', null, C.touchDevice ? 'Touchez l\'écran pour commencer' : 'Appuyez sur une touche pour commencer'),
         C.Pwa && C.Pwa.iosBrowser ? h('div.install-tip', null, '📲 Plein écran et hors ligne : Partager → « Sur l\'écran d\'accueil »') : null,
-        h('div.footer', null, 'v2.0 · Arènes 3D · 17 combattants + ton héros · Créations originales'));
+        h('div.footer', null, 'v2.1 · Arènes 3D · 20 combattants + ton héros · Créations originales'));
       return el;
     },
     onAny() { C.Audio.init(); C.Audio.music('menu'); UI.go('slots', {}, { reset: true }); },
@@ -739,7 +740,7 @@
         topbar('Liste des coups — ' + ch.name, () => UI.back()),
         h('div.movelist', null,
           h('div.ml-help', null, 'Contrôles : joystick pour se déplacer (↑ saut, ↓ accroupi), double-tap → ruée. ',
-            h('b', null, 'LÉGER'), ' · ', h('b', null, 'LOURD'), ' · ', h('b', null, 'SPÉCIAL'), ' · ', h('b', null, 'GARDE'), ' (au bon moment = PARADE) · ', h('b', null, 'SAISIE'), ' · ', h('b', null, 'ULTRA'), '.'),
+            h('b', null, 'LÉGER'), ' · ', h('b', null, 'LOURD'), ' · ', h('b', null, 'SPÉCIAL'), ' · ', h('b', null, 'GARDE'), ' (debout = garde haute, accroupi = garde basse ; au bon moment = PARADE) · ', h('b', null, 'SAISIE'), ' · ', h('b', null, 'ULTRA'), '.'),
           h('table.ml', null, list.map((m) => h('tr.ml-' + m.kind, null, h('td.ml-in', null, m.input), h('td.ml-name', null, m.name), h('td.ml-kind', null, kindLabel[m.kind] || ''))))));
     }
   };
@@ -784,7 +785,7 @@
     render(p) {
       return h('div', null, h('div.center-panel.wide', null,
         h('div.res-title.win', null, '🎓 DIPLÔMÉ !'),
-        h('p', null, 'Maître Shen est fier de toi ! Tu sais marcher, sauter, enchaîner les coups, te protéger, charger ton aura et lancer tes attaques ULTRA.'),
+        h('p', null, 'Maître Shen est fier de toi ! Tu sais marcher, sauter, enchaîner les coups, te protéger en garde haute et en garde basse, charger ton aura et lancer tes attaques ULTRA.'),
         h('div.reward', null, '◆ +', p.orbs, ' orbes'),
         xpLine({ xp: p.xp, levels: p.levels }),
         h('div.res-btns', null,
@@ -870,7 +871,7 @@
       const ch = C.Roster.get(A.char);
       const text = p.lost
         ? ch.name + ' tombe au combat après ' + A.idx + ' victoire' + (A.idx > 1 ? 's' : '') + '. Le tournoi continue sans lui… pour l\'instant.'
-        : 'Oméga s\'effondre ! ' + ch.name + ' a triomphé de tous les guerriers des mondes. De retour dans ' + ch.world + ', une nouvelle légende est née… mais les failles pourraient bien se rouvrir un jour.';
+        : 'Oméga s\'effondre ! ' + ch.name + ' a triomphé de tous les guerriers des mondes. De retour dans ' + (ch.home || ch.world) + ', une nouvelle légende est née… mais les failles pourraient bien se rouvrir un jour.';
       return h('div', null, h('div.center-panel.wide', null,
         h('div.res-title' + (p.lost ? '.lose' : '.win'), null, p.lost ? 'FIN DE PARTIE' : 'ARCADE TERMINÉE !'),
         portraitImg(A.char, A.costume, 220),

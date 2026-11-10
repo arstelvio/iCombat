@@ -165,6 +165,8 @@
     s_strike_r: m(LEGS_IDLE, { torso: -0.1, ua1: 2.4, la1: 0.8, wa: 4.2, ua2: 0.3, la2: 1.4 }),
     s_strike: { torso: 0.45, head: -0.1, ua1: 1.35, la1: 0.15, wa: 1.6, ua2: 1.0, la2: 0.6, th1: 0.75, sh1: -0.6, th2: -0.6, sh2: -0.1 },
     s_slam: m(LEGS_WIDE, { y: 10, torso: 0.55, head: 0.1, ua1: 1.0, la1: 0.1, wa: 0.6, ua2: 0.9, la2: 0.3 }),
+    p_aim_r: m(LEGS_IDLE, { torso: -0.04, ua1: 0.45, la1: 1.1, wa: 2.7, ua2: 0.9, la2: 1.3 }),
+    p_aim: m(LEGS_IDLE, { torso: 0.1, head: -0.05, ua1: 0.15, la1: 0.7, wa: 0.8, ua2: 1.6, la2: 0.02 }),
     r_shoot: m(LEGS_IDLE, { torso: 0.02, ua2: 0.6, la2: 1.45, wa2: 1.58, ua1: 1.2, la1: 0.45 }),
     r_butt_r: m(LEGS_IDLE, { torso: -0.1, ua2: 0.3, la2: 2.2, wa2: 4.0, ua1: 0.8, la1: 1.6 }),
     r_butt: { torso: 0.4, ua2: 1.4, la2: 0.3, wa2: 1.0, ua1: 1.4, la1: 0.3, th1: 0.7, sh1: -0.55, th2: -0.55, sh2: -0.1 }
