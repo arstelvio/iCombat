@@ -28,11 +28,19 @@
       this.timeLimit = cfg.time == null ? 99 : cfg.time;
       this.difficulty = cfg.difficulty == null ? 1 : cfg.difficulty;
       this.parryWindow = 6;
+      // En ligne : simulation déterministe, identique sur les deux téléphones (voir det.js)
+      this.det = !!cfg.det;
+      this.rng = this.det ? new C.Det.Rng(cfg.seed) : null;
+      // En ligne, l'invité (joueur 2) regarde le combat de l'autre côté : il se voit à gauche, comme le joueur 1
+      this.viewFlip = !!cfg.viewFlip;
+      this.me = cfg.me || 0;
       FX.reset();
       // Plan de combat : angle th et origine (ox, oz) dans l'arène
       this.ax = { th: 0, ox: 0, oz: 0 };
       this.turned = 0;
       this.f = [new C.Fighter(this, 0, cfg.p1), new C.Fighter(this, 1, cfg.p2)];
+      if (cfg.p1.player) this.f[0].playerName = cfg.p1.player;
+      if (cfg.p2.player) this.f[1].playerName = cfg.p2.player;
       this.round = 0;
       this.drawCount = 0;
       this.cam = { x: 0, y: 0, zoom: 1, shake: 0, sx: 0, sy: 0, px: 0, py: 320, pz: 1250, tx: 0, ty: 110, tz: 0, fov: 36, set: false };
@@ -52,6 +60,8 @@
     }
 
     opponentOf(f) { return f === this.f[0] ? this.f[1] : this.f[0]; }
+    // Empreinte de l'état du combat (comparée entre les deux téléphones en ligne)
+    hash() { return C.Det.battleHash(this); }
 
     // =============================================================== ARÈNE 3D
     // Direction (angle dans l'arène) dans laquelle un combattant regarde son adversaire
@@ -143,6 +153,7 @@
 
     // =============================================================== BOUCLE
     update() {
+      if (this.det && !C.Det.active) { C.Det.run(this.rng, () => this.update()); return; }
       if (this.paused || this.result) return;
       this.frame++;
       // Gel « super »
@@ -271,16 +282,17 @@
       w.wins++;
       const perfect = w.hp >= w.maxHp;
       this.roundLog.push({ winner: w.side, perfect, timeout: !!info.timeout, ult: !!info.byUlt, hp: w.hp / w.maxHp });
-      if (w.state !== 'ko') { w.state = 'win'; w.st = 0; w.winPose = Math.random() < 0.5 ? 'victory' : 'victory2'; }
+      if (w.state !== 'ko') { w.state = 'win'; w.st = 0; w.winPose = U.random() < 0.5 ? 'victory' : 'victory2'; }
       const l = info.loser;
       if (l && l.state !== 'ko' && l.state !== 'knockdown') { l.state = 'lose'; l.st = 0; }
       if (perfect) { this.say('PARFAIT !', null, 120, '#7dff8a', 1.3); C.Audio.play('unlock'); }
+      else if (w.playerName) this.say(w.playerName.toUpperCase() + ' GAGNE LA MANCHE', null, 120, '#ffd23f', 0.8);
       else this.say(w.side === 0 ? 'J1 GAGNE LA MANCHE' : (this.mode === 'versus2p' ? 'J2 GAGNE LA MANCHE' : (this.f[1].controller && this.f[1].controller.isCPU ? 'CPU' : 'J2') + ' GAGNE LA MANCHE'), null, 120, '#ffd23f', 0.8);
       if (w.wins >= this.roundsToWin) {
         this.phase = 'matchEnd'; this.pt = 0;
         w.state = 'win'; w.st = 0;
         C.Audio.stopMusic();
-        if (w.side === 0 || this.mode === 'versus2p') C.Audio.music('victory');
+        if (w.side === this.me || this.mode === 'versus2p') C.Audio.music('victory');
         this.winner = w;
         const q = w.ch.quotes && w.ch.quotes.win;
         if (q) this.voice(q, { who: w.ch.voice || w.ch.id });
@@ -305,6 +317,32 @@
         stats: p.matchStats, oppStats: e.matchStats
       };
       if (this.cfg.onEnd) this.cfg.onEnd(this.result);
+    }
+
+    // En ligne : les deux téléphones reprennent la manche à l'identique (commande de l'hôte, voir net.js)
+    netResync(c) {
+      this.rng = new C.Det.Rng(c.seed);
+      this.freeze = null; this.slowmo = 0; this.koInfo = null; this.winner = null;
+      this.combo = [null, null]; this.announce = null; this.flashFx = null;
+      this.round = c.round - 1;
+      this.f.forEach((f, i) => { f.wins = c.wins[i]; });
+      this.startRound();
+      this.f.forEach((f, i) => {
+        f.state = 'idle';
+        f.hp = f.dispHp = f.redHp = Math.max(1, Math.min(f.maxHp, c.hp[i]));
+        f.meter = c.meter[i]; f.heroAwake = !!c.awake[i];
+        f.easyTurn = 0; f.md = {}; f.calm = 0; f.hpSeen = f.hp; f.animFrom = null;
+        f.pose = C.Rig.completePose(C.Poses.get('idle', f.look));
+      });
+      this.clock = c.clock < 0 ? Infinity : c.clock;
+      this.roundLog = c.roundLog.slice(); this.drawCount = c.drawCount; this.time = c.time;
+      this.phase = 'ready'; this.pt = 0;
+    }
+    // En ligne : l'hôte a terminé le combat, ce téléphone s'aligne sur son résultat
+    forceFinish(winner) {
+      if (this.result) return;
+      this.winner = this.f[winner] || this.f[0];
+      this.finish();
     }
 
     // =============================================================== ÉVEIL DU HÉROS
@@ -627,7 +665,7 @@
       if (a.side === 0 || t.side === 0) C.Audio.vibrate(big ? 35 : 15);
       if (counterHit) FX.text(t.x, t.y - 240, 'CONTRE !', '#ff9a3c', 30, 40);
       if (big || counterHit || t.hp <= 0) this.comicWord(px, py - 50, h, isProj);
-      if (C.Store.settings.damageNumbers) FX.text(px + U.rand(-10, 10), py - 30, String(dmg), counterHit ? '#ffb070' : '#fff3c0', 22 + Math.min(14, dmg / 8), 36);
+      if (C.Store.settings.damageNumbers) FX.text(px + (Math.random() * 20 - 10), py - 30, String(dmg), counterHit ? '#ffb070' : '#fff3c0', 22 + Math.min(14, dmg / 8), 36);
       a.moveHit = true; a.moveContact = true;
       if (a.state === 'move' && a.move && a.move.onHit && !isProj) a.move.onHit(a, t, this, h);
       if (h.lock && a.state === 'move' && a.move && a.move.onHit && isProj === false) { /* déjà géré */ }
@@ -723,6 +761,7 @@
         const t = U.clamp(this.pt / 100, 0, 1), e = 1 - (1 - t) * (1 - t);
         az = CAM_AZ + (1 - e) * 2.4; D += (1 - e) * 520; el = 0.12 + (1 - e) * 0.32; k = 0.25;
       }
+      if (this.viewFlip) az += Math.PI;
       const ce = Math.cos(el);
       const P = this.world(fx - Math.sin(az) * D * ce, fz + Math.cos(az) * D * ce), T = this.world(fx, fz);
       const py = fy + 10 + D * Math.sin(el);
@@ -730,7 +769,7 @@
       const kt = Math.min(1, k * 1.3);
       c.px = U.lerp(c.px, P[0], k); c.py = U.lerp(c.py, py, k); c.pz = U.lerp(c.pz, P[1], k);
       c.tx = U.lerp(c.tx, T[0], kt); c.ty = U.lerp(c.ty, fy, kt); c.tz = U.lerp(c.tz, T[1], kt);
-      if (c.shake > 0) { c.sx = U.rand(-c.shake, c.shake); c.sy = U.rand(-c.shake, c.shake) * 0.7; c.shake *= 0.86; if (c.shake < 0.5) c.shake = 0; }
+      if (c.shake > 0) { c.sx = (Math.random() * 2 - 1) * c.shake; c.sy = (Math.random() * 2 - 1) * c.shake * 0.7; c.shake *= 0.86; if (c.shake < 0.5) c.shake = 0; }
       else { c.sx = c.sy = 0; }
     }
 
@@ -781,6 +820,38 @@
       }
       if (fz) this.renderCutIn(ctx, fz, W, H);
       if (this.mode !== 'demo') this.renderHUD(ctx, W, H);
+      if (this.mode === 'online') this.renderOnline(ctx, V, W, H);
+    }
+
+    // En ligne : flèche « TOI » au début des manches, message si l'adversaire se fait attendre
+    renderOnline(ctx, V, W, H) {
+      const me = this.f[this.me];
+      if (V && (this.phase === 'intro' || this.phase === 'ready' || this.phase === 'go' || (this.phase === 'fight' && this.pt < 50))) {
+        V.pt(me.x, me.y - me.height() - me.hover() - 40, me.zl || 0);
+        const x = V.sx, y = V.sy, b = 0.5 + 0.5 * Math.sin(this.frame * 0.25);
+        ctx.save();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.font = '34px Bangers, Impact, sans-serif';
+        ctx.lineWidth = 6; ctx.strokeStyle = '#120818';
+        ctx.strokeText('TOI', x, y - 22 - b * 8); ctx.fillStyle = '#ffe27a'; ctx.fillText('TOI', x, y - 22 - b * 8);
+        ctx.fillStyle = '#ffe27a'; ctx.strokeStyle = '#120818'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x - 14, y - 18 - b * 8); ctx.lineTo(x + 14, y - 18 - b * 8); ctx.lineTo(x, y - b * 8); ctx.closePath(); ctx.stroke(); ctx.fill();
+        ctx.restore();
+      }
+      const ls = this.net;
+      if (ls && ls.stalled && !this.result) {
+        const other = this.f[1 - this.me];
+        ctx.save();
+        ctx.fillStyle = 'rgba(10,5,20,0.72)';
+        ctx.fillRect(W / 2 - 260, H * 0.5 - 42, 520, 84);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = '26px "Russo One", sans-serif'; ctx.fillStyle = '#ffffff';
+        const dots = '.'.repeat(1 + Math.floor(performance.now() / 400) % 3);
+        ctx.fillText('En attente de ' + (other.playerName || 'ton ami') + dots, W / 2, H * 0.5 - 10);
+        ctx.font = '18px "Russo One", sans-serif'; ctx.fillStyle = '#9fe8ff';
+        ctx.fillText('La connexion ralentit', W / 2, H * 0.5 + 22);
+        ctx.restore();
+      }
     }
 
     renderShield(ctx, f) {
@@ -829,7 +900,7 @@
       const f = fz.f;
       const t = fz.t;
       const k = U.clamp(t / 8, 0, 1) * U.clamp((fz.dur - t) / 8, 0, 1);
-      const left = f.side === 0;
+      const left = (f.side === 0) !== this.viewFlip;
       const bh = fz.ult ? H * 0.32 : H * 0.2;
       const y = fz.ult ? H * 0.22 : H * 0.3;
       ctx.save();
@@ -877,7 +948,9 @@
     }
 
     renderHUD(ctx, W, H) {
-      const [a, b] = this.f;
+      // à gauche : le joueur de ce téléphone (en ligne, l'invité voit les rôles inversés)
+      const L = this.viewFlip ? 1 : 0;
+      const a = this.f[L], b = this.f[1 - L];
       // Marges élargies par les zones sûres (encoche et coins arrondis de l'iPhone)
       const sf = C.safe || { l: 0, r: 0, t: 0 };
       const pad = 18 + sf.l, padR = 18 + sf.r;
@@ -886,8 +959,8 @@
       this.drawLife(ctx, a, pad + 74, top, barW, barH, false);
       this.drawLife(ctx, b, W - padR - 74 - barW, top, barW, barH, true);
       // Portraits
-      this.drawPortrait(ctx, 0, pad, top - 8, 70);
-      this.drawPortrait(ctx, 1, W - padR - 70, top - 8, 70);
+      this.drawPortrait(ctx, a.side, pad, top - 8, 70, false);
+      this.drawPortrait(ctx, b.side, W - padR - 70, top - 8, 70, true);
       // Chrono
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const clk = this.clock === Infinity ? '∞' : String(Math.ceil(Math.max(0, this.clock) / 60));
@@ -907,7 +980,7 @@
       this.drawMeter(ctx, b, W - padR - 74 - mw, top + barH + 44, mw, true);
       // Combos
       for (let s = 0; s < 2; s++) {
-        const cb = this.combo[s];
+        const cb = this.combo[s ^ L];
         if (!cb) continue;
         const x = s === 0 ? W * 0.1 : W * 0.9;
         const k = Math.min(1, cb.t / 15);
@@ -1016,19 +1089,22 @@
       ctx.textAlign = flip ? 'right' : 'left';
       ctx.lineWidth = 4; ctx.strokeStyle = '#120818';
       const nx = flip ? x + w : x;
-      ctx.strokeText(f.name, nx, y + h + 14);
-      ctx.fillStyle = '#ffffff'; ctx.fillText(f.name, nx, y + h + 14);
+      // en ligne : le nom du joueur à côté de celui du combattant
+      const label = f.playerName ? f.name + ' · ' + f.playerName : f.name;
+      ctx.strokeText(label, nx, y + h + 14);
+      ctx.fillStyle = f.playerName && f.side === this.me ? '#ffe27a' : '#ffffff'; ctx.fillText(label, nx, y + h + 14);
       ctx.restore();
     }
 
-    drawPortrait(ctx, side, x, y, s) {
+    drawPortrait(ctx, side, x, y, s, right) {
       const f = this.f[side];
+      if (right == null) right = side === 1;
       ctx.save();
       ctx.fillStyle = 'rgba(10,5,20,0.85)';
       ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2 + 3, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2, 0, Math.PI * 2); ctx.clip();
       ctx.fillStyle = U.shade(f.ch.aura, -0.55); ctx.fillRect(x, y, s, s);
-      if (side === 1) { ctx.translate(x + s, y); ctx.scale(-1, 1); ctx.drawImage(this.portraits[side], 0, 0, s, s); }
+      if (right) { ctx.translate(x + s, y); ctx.scale(-1, 1); ctx.drawImage(this.portraits[side], 0, 0, s, s); }
       else ctx.drawImage(this.portraits[side], x, y, s, s);
       ctx.restore();
       ctx.strokeStyle = f.awakened > 0 ? '#ffd84a' : '#ffffff'; ctx.lineWidth = 3;

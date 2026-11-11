@@ -1,6 +1,9 @@
 /* Choc des Légendes — particules et effets visuels */
 (function (C) {
   'use strict';
+  // Hasard des effets visuels : toujours celui du navigateur, jamais celui du combat (voir det.js)
+  const vrand = (a, b) => a + Math.random() * (b - a);
+  const vrandi = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
   const U = C.U;
   const PI = Math.PI;
   const MAX = 420;
@@ -49,23 +52,23 @@
     add({ t: 'ring', x, y, size: 10, grow: 6 * power, color: '#ffffff', life: 9, width: 4 });
     const n = Math.round(7 + power * 6);
     for (let i = 0; i < n; i++) {
-      const a = (dir > 0 ? 0 : PI) + U.rand(-1.2, 1.2);
-      const sp = U.rand(6, 15) * power;
-      add({ t: 'spark', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, color: i % 3 === 0 ? '#ffffff' : color, life: U.randi(8, 15), size: U.rand(2, 4), add: true, drag: 0.86 });
+      const a = (dir > 0 ? 0 : PI) + vrand(-1.2, 1.2);
+      const sp = vrand(6, 15) * power;
+      add({ t: 'spark', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, color: i % 3 === 0 ? '#ffffff' : color, life: vrandi(8, 15), size: vrand(2, 4), add: true, drag: 0.86 });
     }
     // Éclat en étoile
-    add({ t: 'star', x, y, size: 34 * power, color: '#ffffff', life: 6, rot: U.rand(0, PI) });
+    add({ t: 'star', x, y, size: 34 * power, color: '#ffffff', life: 6, rot: vrand(0, PI) });
   };
   FX.slashSpark = function (x, y, dir, power, color) {
     color = color || '#bfe8ff';
-    add({ t: 'cut', x, y, size: 70 * (power || 1), color, life: 10, rot: U.rand(-0.9, -0.3) * dir, add: true });
+    add({ t: 'cut', x, y, size: 70 * (power || 1), color, life: 10, rot: vrand(-0.9, -0.3) * dir, add: true });
     FX.hitSpark(x, y, dir, (power || 1) * 0.8, color);
   };
   FX.blockSpark = function (x, y, dir) {
     add({ t: 'shield', x, y, size: 42, color: '#7fd1ff', life: 12, dir, add: true });
     for (let i = 0; i < 6; i++) {
-      const a = (dir > 0 ? PI : 0) + U.rand(-0.9, 0.9);
-      add({ t: 'spark', x, y, vx: Math.cos(a) * U.rand(4, 9), vy: Math.sin(a) * U.rand(4, 9), color: '#bfe9ff', life: 10, size: 2.5, add: true, drag: 0.85 });
+      const a = (dir > 0 ? PI : 0) + vrand(-0.9, 0.9);
+      add({ t: 'spark', x, y, vx: Math.cos(a) * vrand(4, 9), vy: Math.sin(a) * vrand(4, 9), color: '#bfe9ff', life: 10, size: 2.5, add: true, drag: 0.85 });
     }
   };
   FX.parry = function (x, y) {
@@ -80,7 +83,7 @@
   FX.dust = function (x, y, dir, n, big) {
     n = n || 5;
     for (let i = 0; i < n; i++) {
-      add({ t: 'smoke', x: x + U.rand(-10, 10), y: y - U.rand(0, 8), vx: -dir * U.rand(0.5, 3.5) + U.rand(-1, 1), vy: -U.rand(0.3, 2), size: U.rand(8, 16) * (big ? 1.8 : 1), grow: 0.6, color: '#c9bca6', life: U.randi(18, 30), alpha: 0.5, drag: 0.94 });
+      add({ t: 'smoke', x: x + vrand(-10, 10), y: y - vrand(0, 8), vx: -dir * vrand(0.5, 3.5) + vrand(-1, 1), vy: -vrand(0.3, 2), size: vrand(8, 16) * (big ? 1.8 : 1), grow: 0.6, color: '#c9bca6', life: vrandi(18, 30), alpha: 0.5, drag: 0.94 });
     }
   };
   FX.explosion = function (x, y, r, color, smoke) {
@@ -89,32 +92,32 @@
     add({ t: 'glow', x, y, size: r * 1.2, color: '#ffffff', life: 8, add: true });
     add({ t: 'ring', x, y, size: r * 0.4, grow: r * 0.12, color: U.shade(color, 0.4), life: 14, width: 7 });
     for (let i = 0; i < 18; i++) {
-      const a = U.rand(0, PI * 2), sp = U.rand(3, 11) * r / 60;
-      add({ t: 'ember', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2, color: i % 2 ? color : '#ffe08a', life: U.randi(16, 30), size: U.rand(3, 7), add: true, grav: 0.18, drag: 0.94 });
+      const a = vrand(0, PI * 2), sp = vrand(3, 11) * r / 60;
+      add({ t: 'ember', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2, color: i % 2 ? color : '#ffe08a', life: vrandi(16, 30), size: vrand(3, 7), add: true, grav: 0.18, drag: 0.94 });
     }
     if (smoke !== false) {
       for (let i = 0; i < 8; i++) {
-        add({ t: 'smoke', x: x + U.rand(-r * 0.4, r * 0.4), y: y + U.rand(-r * 0.4, r * 0.2), vx: U.rand(-1.5, 1.5), vy: -U.rand(0.5, 2.5), size: r * U.rand(0.3, 0.6), grow: 0.8, color: '#3a3238', life: U.randi(30, 50), alpha: 0.55, drag: 0.95 });
+        add({ t: 'smoke', x: x + vrand(-r * 0.4, r * 0.4), y: y + vrand(-r * 0.4, r * 0.2), vx: vrand(-1.5, 1.5), vy: -vrand(0.5, 2.5), size: r * vrand(0.3, 0.6), grow: 0.8, color: '#3a3238', life: vrandi(30, 50), alpha: 0.55, drag: 0.95 });
       }
     }
   };
   FX.energyBurst = function (x, y, color, n, speed) {
     for (let i = 0; i < (n || 16); i++) {
-      const a = U.rand(0, PI * 2), sp = U.rand(2, speed || 9);
-      add({ t: 'spark', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, color: i % 3 ? color : '#fff', life: U.randi(12, 24), size: U.rand(2, 4), add: true, drag: 0.9 });
+      const a = vrand(0, PI * 2), sp = vrand(2, speed || 9);
+      add({ t: 'spark', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, color: i % 3 ? color : '#fff', life: vrandi(12, 24), size: vrand(2, 4), add: true, drag: 0.9 });
     }
   };
   FX.auraParticle = function (x, y, color) {
-    add({ t: 'flame', x, y, vx: U.rand(-0.5, 0.5), vy: -U.rand(2, 4.5), size: U.rand(6, 13), color, life: U.randi(14, 24), add: true, drag: 0.97, shrink: true });
+    add({ t: 'flame', x, y, vx: vrand(-0.5, 0.5), vy: -vrand(2, 4.5), size: vrand(6, 13), color, life: vrandi(14, 24), add: true, drag: 0.97, shrink: true });
   };
   FX.ember = function (x, y, color, vx, vy, size, life) {
     add({ t: 'ember', x, y, vx: vx || 0, vy: vy || 0, size: size || 4, color, life: life || 20, add: true, drag: 0.95 });
   };
   FX.smoke = function (x, y, size, color, life, vx, vy) {
-    add({ t: 'smoke', x, y, vx: vx || U.rand(-1, 1), vy: vy || -U.rand(0.5, 2), size, grow: 0.5, color: color || '#555', life: life || 30, alpha: 0.6, drag: 0.95 });
+    add({ t: 'smoke', x, y, vx: vx || vrand(-1, 1), vy: vy || -vrand(0.5, 2), size, grow: 0.5, color: color || '#555', life: life || 30, alpha: 0.6, drag: 0.95 });
   };
   FX.petal = function (x, y, color) {
-    add({ t: 'petal', x, y, vx: U.rand(-3, 3), vy: U.rand(-3, 1), size: U.rand(4, 7), color: color || '#ffb7d0', life: U.randi(40, 70), rot: U.rand(0, PI), vr: U.rand(-0.2, 0.2), grav: 0.05, drag: 0.98 });
+    add({ t: 'petal', x, y, vx: vrand(-3, 3), vy: vrand(-3, 1), size: vrand(4, 7), color: color || '#ffb7d0', life: vrandi(40, 70), rot: vrand(0, PI), vr: vrand(-0.2, 0.2), grav: 0.05, drag: 0.98 });
   };
   FX.lightning = function (x1, y1, x2, y2, color, width, life) {
     add({ t: 'bolt', x: x1, y: y1, x2, y2, color: color || '#bcd7ff', width: width || 3, life: life || 5, seed: Math.random() * 1000, add: true });

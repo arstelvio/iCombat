@@ -6,10 +6,15 @@
   U.clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   U.lerp = (a, b, t) => a + (b - a) * t;
   U.sign = (v) => (v < 0 ? -1 : v > 0 ? 1 : 0);
-  U.rand = (a, b) => a + Math.random() * (b - a);
-  U.randi = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
-  U.choice = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  U.chance = (p) => Math.random() < p;
+  // Hasard : Math.random par défaut ; pendant un combat en ligne, le générateur à graine commune (voir det.js)
+  let rnd = Math.random;
+  U.setRandom = (fn) => { rnd = fn || Math.random; };
+  U.getRandom = () => rnd;
+  U.random = () => rnd();
+  U.rand = (a, b) => a + rnd() * (b - a);
+  U.randi = (a, b) => Math.floor(a + rnd() * (b - a + 1));
+  U.choice = (arr) => arr[Math.floor(rnd() * arr.length)];
+  U.chance = (p) => rnd() < p;
   U.approach = (v, target, step) => (v < target ? Math.min(v + step, target) : Math.max(v - step, target));
   U.easeOut = (t) => 1 - (1 - t) * (1 - t);
   U.easeIn = (t) => t * t;
@@ -81,7 +86,7 @@
   U.shuffle = function (arr) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rnd() * (i + 1));
       [a[i], a[j]] = [a[j], a[i]];
     }
     return a;

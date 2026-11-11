@@ -262,7 +262,7 @@
       ctx.beginPath(); ctx.arc(sx, H - 150, L.stickR + 8 + pulse * 10, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     }
     // boutons
-    const me = battle && battle.f[0];
+    const me = battle && battle.f[battle.me || 0];
     for (const b of L.buttons) {
       const pressed = T.buttons[b.id] > 0;
       let col = COLORS[b.id];

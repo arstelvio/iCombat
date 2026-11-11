@@ -73,7 +73,16 @@
     pollPad();
     const b = C.Game.battle;
     let n = 0;
+    const net = b && C.Game.net;
     while (acc >= STEP && n < 4) {
+      if (net) {
+        // En ligne : une image n'est calculée que quand la commande de l'adversaire est arrivée
+        const r = net.step();
+        if (r === 0) { acc = Math.min(acc, STEP * 2); break; }
+        acc -= STEP; n++;
+        C.Game.tick();
+        continue;
+      }
       acc -= STEP; n++;
       if (b) { b.update(); C.Game.tick(); }
       else if (demo) {

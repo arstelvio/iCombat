@@ -7,7 +7,7 @@
  * se remplit au fil des chargements.
  */
 'use strict';
-const VERSION = 'ec97b26759c2';
+const VERSION = 'ead228203ef3';
 const ASSETS = [
   "./",
   "css/style.css",
@@ -23,12 +23,14 @@ const ASSETS = [
   "js/ai.js",
   "js/audio.js",
   "js/battle.js",
+  "js/det.js",
   "js/effects.js",
   "js/fighter.js",
   "js/input.js",
   "js/main.js",
   "js/modes.js",
   "js/moves.js",
+  "js/net.js",
   "js/poses.js",
   "js/projectiles.js",
   "js/pwa.js",
@@ -42,6 +44,7 @@ const ASSETS = [
   "js/ui.js",
   "js/util.js",
   "js/voice.js",
+  "lib/peerjs.min.js",
   "lib/three.min.js",
   "manifest.webmanifest"
 ];

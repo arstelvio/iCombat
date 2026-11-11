@@ -391,22 +391,24 @@
     return L;
   }
 
-  // Crée (ou met à jour) le combattant « hero » d'après les choix du joueur ; null le retire
-  function setHero(data) {
-    if (!data) { delete byId.hero; return null; }
+  // Crée (ou met à jour) le combattant « hero » d'après les choix du joueur ; null le retire.
+  // En ligne, les héros des deux joueurs sont enregistrés sous d'autres noms (heroA, heroB).
+  function setHero(data, id) {
+    id = id || 'hero';
+    if (!data) { delete byId[id]; return null; }
     const h = Object.assign({}, HERO_DEFAULT, data);
     const P = HERO_POWERS[h.power] || HERO_POWERS.ki;
     const base = byId[P.base];
     const ch = {
-      id: 'hero', name: h.name, short: h.name, title: P.title, world: 'le Village des Héros', custom: true, voice: 'hero',
+      id, name: h.name, short: h.name, title: P.title, world: 'le Village des Héros', custom: true, voice: 'hero',
       bio: h.name + ' n\'est encore qu\'un ' + P.title.toLowerCase() + ', mais rêve de devenir une légende. Son attaque secrète : « ' + h.ult + ' » !',
       quotes: { intro: 'Je vais devenir le plus fort !', win: 'Ouais ! Je deviens une vraie légende !', lose: 'Je reviendrai encore plus fort !' },
       style: base.style, aura: h.aura, awakenAura: h.aura, power: h.power in HERO_POWERS ? h.power : 'ki', ultName: h.ult,
       stats: Object.assign({}, base.stats), rating: Object.assign({}, base.rating), tune: base.tune,
       look: heroLook(h), palettes: [{}], rev: ++heroRev, index: -1, data: h
     };
-    byId.hero = ch;
-    for (const k in lookCache) if (k.indexOf('hero#') === 0) delete lookCache[k];
+    byId[id] = ch;
+    for (const k in lookCache) if (k.indexOf(id + '#') === 0) delete lookCache[k];
     return ch;
   }
 

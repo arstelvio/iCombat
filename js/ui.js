@@ -21,6 +21,7 @@
     'Terminez les chapitres du mode Histoire pour débloquer de nouveaux combattants.',
     'Gagnez des orbes ◆ pour acheter costumes, arènes et combattants dans la Boutique.',
     'Maintenez ULTRA pour CHARGER votre aura : la jauge se remplit, jusqu\'à 3 barres !',
+    'EN LIGNE : crée une salle et donne son code à un ami. Chacun joue sur son téléphone, même loin l\'un de l\'autre !',
     'Presque K.O. ? Votre héros se RÉVEILLE : plus fort, un peu de vie et une barre d\'ULTRA en cadeau !',
     'Touchez ULTRA d\'un coup sec pour lancer votre Super, ou votre Ultime avec 3 barres.'
   ];
@@ -339,6 +340,12 @@
     render() {
       const d = S();
       const ch = C.Story.chapters.filter((c) => d.story.done[c.id]).length;
+      // Lien d'invitation (…#salle=CODE) : on ouvre directement l'écran « Rejoindre » avec le code
+      const link = C.Net && C.Net.codeFromLink();
+      if (link && !UI.linkUsed) {
+        UI.linkUsed = true;
+        setTimeout(() => { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ } UI.go('online', { code: link }); }, 60);
+      }
       const tile = (icon, label, sub, fn, cls) => h('button.tile.nav' + (cls ? '.' + cls : ''), { type: 'button', onclick: () => { C.Audio.play('confirm'); fn(); } },
         h('span.tile-icon', null, icon), h('span.tile-label', null, label), h('span.tile-sub', null, sub));
       return h('div', null,
@@ -349,6 +356,7 @@
         h('div.logo.small', null, h('div.logo-top', null, 'CHOC DES'), h('div.logo-main', null, 'LEGENDES')),
         h('div.tiles', null,
           tile('📖', 'HISTOIRE', 'Chapitre ' + Math.min(ch + 1, C.Story.chapters.length) + ' / ' + C.Story.chapters.length, () => UI.go('story'), 'primary big'),
+          tile('🌐', 'EN LIGNE', 'Avec un ami, chacun sur son téléphone', () => UI.go('online'), 'online'),
           tile('⚔️', 'COMBAT', '1 joueur ou 2 joueurs', () => UI.go('select', { mode: 'versus', step: 1 }), 'big'),
           tile('🦸', 'MON HÉROS', d.hero ? d.hero.name : 'Crée ton héros !', () => UI.go('hero'), 'hero'),
           tile('🎓', 'ÉCOLE', 'Apprends à combattre', () => C.Game.startSchool && C.Game.startSchool(), 'school'),
@@ -578,7 +586,8 @@
         versus: isP2 ? 'Choisissez l\'adversaire' : 'Combat libre — Joueur 1',
         arcade: 'Arcade — Choisissez votre combattant',
         survival: 'Survie — Choisissez votre combattant',
-        training: isP2 ? 'Entraînement — Mannequin' : 'Entraînement — Votre combattant'
+        training: isP2 ? 'Entraînement — Mannequin' : 'Entraînement — Votre combattant',
+        online: 'En ligne — Ton combattant'
       };
       const cfg = p.cfg || (p.cfg = { p2human: false, diff: C.Store.settings.defaultDifficulty });
       let selId = p.sel || (isP2 ? (p.p1 === 'takeda' ? 'kairo' : 'takeda') : (d.lastChar && C.Store.canPlay(d.lastChar) ? d.lastChar : 'kairo'));
@@ -672,6 +681,10 @@
         } else if (mode === 'survival') {
           const Sv = C.Game.newSurvival(pick.char, pick.costume);
           C.Game.survivalFight(Sv);
+        } else if (mode === 'online') {
+          const room = C.Net.room;
+          if (room) room.setInfo({ char: pick.char, costume: pick.costume, hero: pick.char === 'hero' ? (d.hero || null) : null, ready: false });
+          UI.back();
         }
       };
       setTimeout(update, 0);
@@ -779,6 +792,204 @@
     },
     onBack() { C.Game.quit('main'); }
   };
+
+  // ------------------------------------------------------------------ En ligne
+  // Portrait d'un joueur de la salle (son héros personnalisé a sa propre apparence)
+  function playerPortrait(p, size, flip) {
+    if (p.char === 'hero' && p.hero) return slotPortrait({ lastChar: 'hero', hero: p.hero }, size);
+    return portraitImg(C.Roster.get(p.char) ? p.char : 'kairo', p.costume || 0, size, flip ? { flip: true } : {});
+  }
+  function playerChar(p) {
+    if (p.char === 'hero' && p.hero) return p.hero.name + ' (héros)';
+    const ch = C.Roster.get(p.char);
+    return ch ? ch.name : '?';
+  }
+  function playerCard(p, me, hint) {
+    if (!p) {
+      return h('div.pcard.empty', null,
+        h('div.pcard-wait', null, h('span.dot'), h('span.dot'), h('span.dot')),
+        h('div.pcard-name', null, 'En attente d\'un ami…'),
+        hint ? h('div.pcard-hint', null, hint) : null);
+    }
+    return h('div.pcard' + (me ? '.me' : '') + (p.ready ? '.ready' : ''), null,
+      playerPortrait(p, 150, !me),
+      h('div.pcard-name', null, p.name + (me ? ' (toi)' : '')),
+      h('div.pcard-char', null, playerChar(p)),
+      h('div.pcard-state', null, p.ready ? '✅ PRÊT !' : '⏳ se prépare…'));
+  }
+  function shareCode(code) {
+    const url = C.Net.shareLink(code);
+    const text = 'Viens te battre contre moi dans Choc des Légendes ! Code de la salle : ' + code;
+    if (navigator.share) { navigator.share({ title: 'Choc des Légendes', text, url }).catch(() => {}); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text + '\n' + url).then(() => UI.toast('Lien copié !', 'Colle-le dans un message pour ton ami.'), () => UI.toast('Code de la salle : ' + code));
+      return;
+    }
+    UI.toast('Code de la salle : ' + code);
+  }
+  // Revient à l'écran de la salle (après un combat, un départ…)
+  UI.toRoom = function () {
+    const i = UI.stack.map((e) => e.name).lastIndexOf('room');
+    if (i >= 0) { UI.stack.length = i + 1; UI.render(UI.stack[i], {}); } else UI.go('room');
+  };
+  UI.onlineQuitPrompt = function () {
+    UI.modal('Quitter le combat ?', 'Attention : le combat continue pendant que tu lis ce message !', [
+      { label: '▶ Continuer', cls: 'primary' },
+      { label: '🚪 Quitter le combat', fn: () => { const r = C.Net.room; if (r) r.abortFight(); C.Game.onlineStop(); UI.toRoom(); } }
+    ]);
+  };
+
+  SC.online = {
+    music: 'select',
+    render(p) {
+      const ok = C.Net && C.Net.available();
+      const input = h('input.code-input.nav', { type: 'text', maxlength: '9', placeholder: 'CODE', autocapitalize: 'characters', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'go', 'aria-label': 'Code de la salle' });
+      if (p.code) input.value = p.code;
+      input.addEventListener('input', () => { const v = C.Net.cleanCode(input.value); if (v !== input.value) input.value = v; });
+      const join = () => {
+        const code = C.Net.cleanCode(input.value);
+        if (code.length !== C.Net.CODE_LEN) { C.Audio.play('error'); UI.toast('Le code a ' + C.Net.CODE_LEN + ' lettres ou chiffres', 'Ton ami le voit en haut de sa salle.'); input.focus(); return; }
+        C.Net.joinRoom(code);
+        UI.go('room');
+      };
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); join(); } });
+      const create = () => { C.Net.createRoom(); UI.go('room'); };
+      if (p.code) setTimeout(() => { if (input.isConnected) UI.setFocus(input.parentNode.querySelector('.btn.primary') || input, true); }, 60);
+      return h('div', null,
+        topbar('Jouer en ligne', () => UI.back()),
+        !ok ? h('div.center-panel', null, h('div.res-title.lose', null, 'Indisponible'), h('p', null, 'Ce navigateur ne permet pas de jouer en ligne. Mets à jour ton téléphone, ou ouvre le jeu dans Safari ou Chrome.')) :
+          h('div.online-body', null,
+            h('div.online-col', null,
+              h('div.online-icon', null, '🏠'), h('div.online-title', null, 'CRÉER UNE SALLE'),
+              h('p.online-text', null, 'Tu reçois un code. Donne-le à ton ami pour qu\'il te rejoigne.'),
+              btn('CRÉER ▶', create, p.code ? 'big' : 'primary big')),
+            h('div.online-col', null,
+              h('div.online-icon', null, '🔑'), h('div.online-title', null, 'REJOINDRE'),
+              h('p.online-text', null, 'Tape le code que ton ami voit dans sa salle.'),
+              input, btn('ENTRER ▶', join, p.code ? 'primary big' : 'big'))),
+        h('div.online-note', null, '🌐 Chacun sur son téléphone, avec Internet : pas besoin d\'être au même endroit. Les deux jeux doivent avoir la même version.'));
+    }
+  };
+
+  SC.room = {
+    music: 'select',
+    render() {
+      const r = C.Net.room || C.Net.lastRoom;
+      const back = () => UI.back();
+      if (!r || r.state === 'closed') {
+        return h('div', null, topbar('Salle', () => UI.back()),
+          h('div.center-panel', null,
+            h('div.res-title.lose', null, 'Salle fermée'),
+            h('p', null, (r && r.error) || 'Cette salle est fermée.'),
+            h('div.res-btns', null, btn('◀ Retour', () => UI.back(), 'primary'))));
+      }
+      if (r.state === 'connecting') {
+        return h('div', null, topbar('Salle', back),
+          h('div.center-panel', null,
+            h('div.pcard-wait.big', null, h('span.dot'), h('span.dot'), h('span.dot')),
+            h('p', null, r.role === 'host' ? 'Ouverture de la salle…' : 'Connexion à la salle ' + r.code + '…'),
+            h('div.res-btns', null, btn('✖ Annuler', back))));
+      }
+      const host = r.role === 'host';
+      const code = h('div.room-code', null, (r.code || '').split('').map((c) => h('span', null, c)));
+      const st = C.Stages.get(r.cfg.stage) || C.Stages.list[0];
+      const stageBox = h(host ? 'button.room-stage.nav' : 'div.room-stage', host ? { type: 'button', onclick: () => {
+        C.Audio.play('confirm');
+        UI.go('stage', { onPick: (id) => { r.setCfg({ stage: id }); UI.back(); } });
+      } } : null,
+      h('span.room-thumb', { style: { backgroundImage: 'url(' + stageThumb(st.id, 192, 108) + ')' } }),
+      h('span.room-stage-name', null, 'Arène : ' + st.name + (host ? ' ✎' : '')));
+      const rounds = host
+        ? chips([{ label: '1', value: 1 }, { label: '2', value: 2 }, { label: '3', value: 3 }], r.cfg.rounds, (v) => r.setCfg({ rounds: v }))
+        : h('span.room-val', null, String(r.cfg.rounds));
+      const ready = r.me.ready;
+      const ping = h('div.room-ping', null, r.other ? 'Connexion ' + (r.routeName || '…') + ' · ' + (r.rtt ? Math.round(r.rtt) + ' ms' : '…') : '');
+      return h('div', null,
+        topbar(host ? 'Ta salle' : 'Salle de ' + (r.other ? r.other.name : 'ton ami'), back),
+        h('div.room-body', null,
+          h('div.room-left', null,
+            h('div.room-label', null, host ? 'CODE DE LA SALLE' : 'SALLE'),
+            code,
+            host ? btn('📤 Envoyer le code', () => shareCode(r.code), r.other ? 'small' : '') : null,
+            host && !r.other ? h('div.room-help', null, 'Ton ami ouvre le jeu, choisit 🌐 EN LIGNE puis REJOINDRE, et tape ce code.') : null,
+            h('div.room-cfg', null,
+              stageBox,
+              h('div.opt-line', null, h('span', null, 'Manches gagnantes :'), rounds)),
+            ping),
+          h('div.room-right', null,
+            h('div.room-players', null,
+              playerCard(r.me, true),
+              h('div.room-vs', null, 'VS'),
+              playerCard(r.other, false, host ? 'Donne-lui le code !' : null)),
+            r.notice ? h('div.room-notice', null, r.notice) : null,
+            h('div.room-actions', null,
+              btn('🥋 Combattant', () => UI.go('select', { mode: 'online', step: 1, sel: r.me.char })),
+              btn(ready ? '✋ Attends !' : '✅ JE SUIS PRÊT !', () => { r.setInfo({ ready: !ready }); }, ready ? '' : 'primary big')),
+            h('div.room-help', null, r.other
+              ? (ready ? (r.other.ready ? 'C\'est parti !' : 'On attend que ' + r.other.name + ' soit prêt…') : 'Quand vous êtes prêts tous les deux, le combat commence.')
+              : (host ? 'Tu peux déjà choisir ton combattant.' : '')))));
+    },
+    onBack() {
+      const room = C.Net.room;
+      if (room && room.other) { UI.modal('Quitter la salle ?', room.other.name + ' est dans la salle avec toi.', [{ label: 'Rester', cls: 'primary' }, { label: '🚪 Quitter', fn: () => { C.Net.leave(); UI.back(); } }]); return; }
+      C.Net.leave();
+      UI.stack.pop();
+      UI.render(UI.stack[UI.stack.length - 1], {});
+    }
+  };
+
+  SC.onlineResult = {
+    music: null,
+    render(p) {
+      const i = p.info, r = C.Net.room;
+      const inRoom = !!(r && r.state !== 'closed' && r.other);
+      const rw = i.rewards || {};
+      return h('div', null, h('div.center-panel.wide', null,
+        h('div.res-title' + (i.won ? '.win' : '.lose'), null, i.won ? 'VICTOIRE !' : 'DÉFAITE…'),
+        h('div.online-score', null,
+          h('div.os-side', null, h('div.os-name', null, i.me.name), h('div.os-char', null, i.me.char)),
+          h('div.os-num', null, i.me.wins + ' – ' + i.other.wins),
+          h('div.os-side', null, h('div.os-name', null, i.other.name), h('div.os-char', null, i.other.char))),
+        rw.orbs ? h('div.reward', null, '◆ +', rw.orbs, ' orbes') : null,
+        xpLine(rw),
+        !inRoom ? h('p', null, (r && r.notice) || 'Ton ami a quitté la salle.') : null,
+        h('div.res-btns', null,
+          inRoom ? btn('🔁 Revanche !', () => { r.setInfo({ ready: true }); UI.toRoom(); }, 'primary') : null,
+          inRoom ? btn('◀ Retour à la salle', () => UI.toRoom()) : null,
+          btn('🚪 Quitter la salle', () => { C.Net.leave(); UI.go('main', {}, { reset: true }); }))));
+    },
+    onBack() { const r = C.Net.room; if (r && r.state !== 'closed') UI.toRoom(); else UI.go('main', {}, { reset: true }); }
+  };
+
+  // Événements du réseau (salle, départ, début du combat)
+  if (C.Net) {
+    C.Net.onEvent = function (type, room, data) {
+      if (type === 'start') { C.Game.startOnline(room, data); return; }
+      if (type === 'aborted') {
+        C.Game.onlineStop();
+        UI.closeModal();
+        if (room.state === 'closed') UI.toast('Combat interrompu', room.error || '');
+        UI.toRoom();
+        return;
+      }
+      if (type === 'joined') {
+        C.Audio.play('unlock');
+        UI.toast('👋 ' + (room.role === 'host' ? room.other.name + ' est dans ta salle !' : 'Tu es dans la salle de ' + room.other.name + ' !'));
+      }
+      const cur = UI.current && UI.current.name;
+      if (type === 'ping') {
+        if (cur !== 'room') return;
+        if (!room.routeAsked || performance.now() - room.routeAsked > 5000) {
+          room.routeAsked = performance.now();
+          room.route().then((v) => { room.routeName = v || room.routeName; });
+        }
+        const el = document.querySelector('.room-ping');
+        if (el) el.textContent = 'Connexion ' + (room.routeName || '…') + ' · ' + Math.round(room.rtt) + ' ms';
+        return;
+      }
+      if (cur === 'room' && !UI.modalEl) UI.refresh();
+    };
+  }
 
   SC.schoolDone = {
     music: 'victory',

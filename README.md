@@ -18,6 +18,19 @@ Jouables tout de suite, sans rien débloquer :
 
 Napoléon et le Rouge Immortel sont les deux **champions** du jeu : un peu plus forts que tous les autres.
 
+## 🌐 Nouveau : jouer en ligne
+
+Deux joueurs, chacun sur son téléphone, même loin l'un de l'autre (il faut Internet sur les deux) :
+
+1. Menu principal → **🌐 EN LIGNE** → **CRÉER UNE SALLE** : un code de 5 caractères s'affiche.
+   **📤 Envoyer le code** l'envoie par message, avec un lien qui ouvre le jeu au bon endroit.
+2. L'ami choisit **🌐 EN LIGNE** → **REJOINDRE** et tape le code (ou touche le lien).
+3. Dans la **salle d'attente**, chacun choisit son combattant (même son héros) et touche **✅ JE SUIS PRÊT !**
+4. Le combat commence ; chacun se voit à gauche de son écran. À la fin : **🔁 Revanche !**
+
+Les deux téléphones doivent avoir la même version du jeu (ouvrez-le avec Internet et revenez à l'écran titre
+pour installer une mise à jour).
+
 ## 🧊 Des combats en 2D dans un décor en 3D
 
 - **Arènes et combattants en 3D**, style dessin animé, avec une caméra de côté qui plonge en gros plan pour
@@ -74,3 +87,5 @@ Le lien fonctionne une à deux minutes plus tard.
 
 Polices : Bangers et Russo One, sous licence SIL Open Font License (voir `fonts/`).
 Rendu 3D : [three.js](https://threejs.org), licence MIT (voir `lib/LICENSE-three.txt`).
+Jeu en ligne : [PeerJS](https://peerjs.com), licence MIT (voir `lib/LICENSE-peerjs.txt`) ; le serveur public de PeerJS
+sert seulement à se retrouver avec le code, ensuite les deux téléphones se parlent directement.

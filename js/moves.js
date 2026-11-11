@@ -1051,7 +1051,7 @@
     const ch = f.ch;
     const style = ch.style;
     const N = styleNormals(style, ch);
-    const moves = Object.assign({}, N, COMMON(), SPECIALS[ch.id] ? SPECIALS[ch.id](f) : SPECIALS.kairo());
+    const moves = Object.assign({}, N, COMMON(), SPECIALS[ch.id] ? SPECIALS[ch.id](f) : ch.custom ? SPECIALS.hero(f) : SPECIALS.kairo());
     // Ajustements selon le gabarit
     const slow = style === 'heavy' || ch.id === 'godefroy' || ch.id === 'noctis' ? 1.12 : ch.id === 'kage' || ch.id === 'lumi' ? 0.9 : 1;
     const dmgK = style === 'heavy' || ch.id === 'godefroy' || ch.id === 'noctis' ? 1.12 : ch.id === 'kage' ? 0.92 : style === 'tiny' ? 0.85 : 1;

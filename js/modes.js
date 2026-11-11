@@ -71,13 +71,15 @@
       const b = this.battle;
       if (!b) return;
       if (C.School && C.School.active) C.School.update(b);
-      if (b.f[0].awakened > 0) this.ctx.transformed = true;
+      // combattant de ce téléphone (en ligne, l'invité est le joueur 2)
+      const me = b.me || 0;
+      if (b.f[me].awakened > 0) this.ctx.transformed = true;
       if (b.events.length) {
         for (const e of b.events) {
-          if (e.type === 'guardcrush' && e.side === 0 && C.Store.current) C.Store.current.stats.guardCrushes++;
-          if (e.type === 'charge' && e.side === 0 && e.bar >= 3 && C.Store.current) C.Achievements.grant('aura_max');
-          if (e.type === 'awaken' && e.side === 0) this.ctx.heroAwoke = true;
-          if (e.type === 'lowblock' && e.side === 0 && C.Store.current && this.ctx.mode !== 'training') {
+          if (e.type === 'guardcrush' && e.side === me && C.Store.current) C.Store.current.stats.guardCrushes++;
+          if (e.type === 'charge' && e.side === me && e.bar >= 3 && C.Store.current) C.Achievements.grant('aura_max');
+          if (e.type === 'awaken' && e.side === me) this.ctx.heroAwoke = true;
+          if (e.type === 'lowblock' && e.side === me && C.Store.current && this.ctx.mode !== 'training') {
             const st = C.Store.current.stats;
             st.lowBlocks = (st.lowBlocks || 0) + 1;
             if (st.lowBlocks >= 10) C.Achievements.grant('gardebasse');
@@ -89,6 +91,8 @@
 
     pause() {
       if (!this.battle || this.battle.result) return;
+      // En ligne, le combat ne s'arrête pas : on propose seulement de le quitter
+      if (this.net) { C.UI.onlineQuitPrompt(); return; }
       this.battle.paused = true;
       C.Input.resetTouch();
       C.UI.go('pause', {}, { overlay: true });
@@ -106,12 +110,14 @@
     // Quitte le combat terminé sans changer d'écran (ex. : retour à la sélection)
     leave() {
       if (C.School && C.School.active) C.School.detach();
+      this.net = null;
       this.battle = null;
       C.inBattle = false;
       C.Input.touch.visible = false;
     },
     quit(toScreen) {
       if (C.School && C.School.active) C.School.detach();
+      this.net = null;
       if (this.ctx && this.ctx.mode === 'training' && !this.ctx.school && C.Store.current) {
         const s = C.Store.current.stats;
         s.trainings = (s.trainings || 0) + 1;
@@ -124,6 +130,84 @@
       C.Input.touch.visible = false;
       C.Audio.music('menu');
       C.UI.go(toScreen || 'main', {}, { reset: true });
+    },
+
+    // ------------------------------------------------------------------ en ligne
+    // m : message « start » de l'hôte (graine, délai, réglages, infos des deux joueurs)
+    startOnline(room, m) {
+      const S = C.Store.settings;
+      const me = room.role === 'host' ? 0 : 1;
+      const pl = m.p;
+      // héros personnalisés : enregistrés des deux côtés sous le même nom (heroA pour l'hôte, heroB pour l'invité)
+      const chars = pl.map((p, i) => {
+        if (p.char === 'hero' && p.hero) { C.Roster.setHero(p.hero, i ? 'heroB' : 'heroA'); return i ? 'heroB' : 'heroA'; }
+        return C.Roster.get(p.char) && !C.Roster.get(p.char).extra ? p.char : 'kairo';
+      });
+      const cos = pl.map((p, i) => { const ch = C.Roster.get(chars[i]); return Math.max(0, Math.min((ch.palettes || [{}]).length - 1, p.costume | 0)); });
+      if (chars[0] === chars[1] && cos[0] === cos[1]) cos[1] = (cos[0] + 1) % (C.Roster.get(chars[1]).palettes || [{}]).length;
+      const ls = room.ls;
+      const cfgM = m.cfg || {};
+      const time = cfgM.time === 0 || cfgM.time === Infinity ? Infinity : (cfgM.time || 99);
+      const cfg = {
+        mode: 'online', det: true, seed: m.seed, viewFlip: me === 1, me,
+        p1: { char: chars[0], costume: cos[0], controller: ls.controller(0), easy: !!pl[0].easy, player: pl[0].name },
+        p2: { char: chars[1], costume: cos[1], controller: ls.controller(1), easy: !!pl[1].easy, player: pl[1].name },
+        stage: C.Stages.get(cfgM.stage) ? cfgM.stage : 'temple', rounds: cfgM.rounds || 2, time, difficulty: 1,
+        quality: this.quality(),
+        onEnd: (r) => this.onlineEnd(r)
+      };
+      this.ctx = { mode: 'online', room, me, chars, p1: { char: pl[me].char }, p2: { char: pl[1 - me].char, human: true }, stage: cfg.stage, players: pl.map((p) => p.name) };
+      this.battle = new C.Battle(cfg);
+      if (time === Infinity) this.battle.clock = Infinity;
+      this.battle.net = ls;
+      ls.attach(this.battle);
+      this.net = ls;
+      if (C.School && C.School.active) C.School.detach();
+      C.inBattle = true;
+      C.Input.twoPlayers = false;
+      C.Input.resetTouch();
+      C.Input.touch.visible = C.touchDevice || C.Input.lastDevice === 'touch';
+      C.UI.closeModal && C.UI.closeModal();
+      C.UI.hide();
+      const st = C.Stages.get(cfg.stage);
+      C.Audio.music(st.music || U.choice(C.Audio.battleSongs));
+      void S;
+    },
+    onlineEnd(r) {
+      const ctx = this.ctx, room = ctx.room;
+      const won = r.winner === ctx.me;
+      const save = C.Store.current;
+      const rewards = { orbs: 0, xp: 0, levels: 0 };
+      if (save) {
+        const s = save.stats;
+        s.fights++; if (won) s.wins++; else s.losses++;
+        s.online = (s.online || 0) + 1;
+        const cs = C.Store.charStats(ctx.p1.char);
+        cs.used++; if (won) cs.wins++;
+        rewards.orbs = won ? 30 : 15;
+        C.Store.addOrbs(rewards.orbs);
+        const lv = C.Store.addXp(won ? 40 : 25);
+        rewards.xp = lv.xp; rewards.levels = lv.levels;
+        C.Achievements.checkStats && C.Achievements.checkStats();
+        C.Store.save();
+      }
+      const me = this.battle.f[ctx.me], other = this.battle.f[1 - ctx.me];
+      const info = { won, draw: false, me: { name: ctx.players[ctx.me], char: me.ch.name, wins: me.wins }, other: { name: ctx.players[1 - ctx.me], char: other.ch.name, wins: other.wins }, rewards, desyncs: this.net ? this.net.resyncs : 0 };
+      this.net = null;
+      this.battle = null;
+      if (room) room.endFight();
+      C.inBattle = false;
+      C.Input.touch.visible = false;
+      C.Audio.music(won ? 'victory' : 'menu');
+      C.UI.go('onlineResult', { info }, { reset: false });
+    },
+    // Fin forcée (départ de l'adversaire, connexion perdue, ou « Quitter le combat »)
+    onlineStop() {
+      this.net = null;
+      this.battle = null;
+      C.inBattle = false;
+      C.Input.touch.visible = false;
+      C.Audio.music('menu');
     },
 
     // ------------------------------------------------------------------ fin de combat
