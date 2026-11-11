@@ -458,3 +458,4 @@ div.room-stage { cursor: default; }
 .os-name { font-family: Bangers, Impact, sans-serif; font-size: 1.6rem; }
 .os-char { font-size: 0.8rem; color: var(--gold); }
 .os-num { font-family: Bangers, Impact, sans-serif; font-size: 3rem; color: #fff; }
+.ml-note { font-size: 0.75em; color: var(--cyan); opacity: 0.9; }

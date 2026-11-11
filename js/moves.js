@@ -266,6 +266,8 @@
     const total = 6 + gap + (o.after || 14);
     return {
       name: o.name, kind: 'special', air: true,
+      // téléportation : deux de suite au plus, puis une seconde de recharge (voir Fighter.startMove)
+      teleport: true,
       anim: [[o.pose || 'cast_up', 5], [o.pose || 'cast_up', gap + 1], [o.endPose || 'fall', o.after || 14]],
       frames: total,
       invuln: [3, 6 + gap + 3],
@@ -1084,7 +1086,7 @@
     const fake = { ch: C.Roster.get(charId) };
     const moves = build(fake);
     const order = ['N', 'F', 'U', 'D', 'S', 'S2', 'X', 'CHARGE', 'L1', 'L2', 'L3', 'H', 'UH', 'DL', 'DH', 'AL', 'AH', 'GRAB'];
-    return order.filter((k) => moves[k]).map((k) => ({ id: k, input: INPUT_NAMES[k], name: moves[k].name, kind: moves[k].kind }));
+    return order.filter((k) => moves[k]).map((k) => ({ id: k, input: INPUT_NAMES[k], name: moves[k].name, kind: moves[k].kind, teleport: !!moves[k].teleport }));
   }
 
   C.Moves = { build, moveList, hit, spawnPoint, fireProj };

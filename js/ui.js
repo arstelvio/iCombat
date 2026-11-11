@@ -10,6 +10,7 @@
     'Joystick : gauche et droite pour avancer ou reculer, vers le haut pour sauter, vers le bas pour s\'accroupir.',
     'Garde haute (debout) contre les coups normaux et plongeants ; garde basse (joystick vers le bas + GARDE) contre les coups bas.',
     'Un projectile arrive ? Sautez par-dessus, ou gardez-vous !',
+    'Téléportations : deux de suite au plus, puis une seconde de recharge. Profitez-en pour contre-attaquer !',
     'Une projection (SAISIE) passe à travers la garde. Appuyez sur SAISIE pour vous dégager !',
     'Double-tapez vers l\'avant pour une ruée, vers l\'arrière pour un pas de recul.',
     'Annulez vos coups normaux en techniques spéciales quand ils touchent.',
@@ -281,7 +282,7 @@
           h('div.logo-sub', null, 'Le tournoi des mondes')),
         h('div.press.blink', null, C.touchDevice ? 'Touchez l\'écran pour commencer' : 'Appuyez sur une touche pour commencer'),
         C.Pwa && C.Pwa.iosBrowser ? h('div.install-tip', null, '📲 Plein écran et hors ligne : Partager → « Sur l\'écran d\'accueil »') : null,
-        h('div.footer', null, 'v2.2 · Arènes 3D · 20 combattants + ton héros · Jeu en ligne · Créations originales'));
+        h('div.footer', null, 'v2.3 · Arènes 3D · 20 combattants + ton héros · Jeu en ligne · Créations originales'));
       return el;
     },
     onAny() { C.Audio.init(); C.Audio.music('menu'); UI.go('slots', {}, { reset: true }); },
@@ -754,7 +755,9 @@
         h('div.movelist', null,
           h('div.ml-help', null, 'Contrôles : joystick pour se déplacer (↑ saut, ↓ accroupi), double-tap → ruée. ',
             h('b', null, 'LÉGER'), ' · ', h('b', null, 'LOURD'), ' · ', h('b', null, 'SPÉCIAL'), ' · ', h('b', null, 'GARDE'), ' (debout = garde haute, accroupi = garde basse ; au bon moment = PARADE) · ', h('b', null, 'SAISIE'), ' · ', h('b', null, 'ULTRA'), '.'),
-          h('table.ml', null, list.map((m) => h('tr.ml-' + m.kind, null, h('td.ml-in', null, m.input), h('td.ml-name', null, m.name), h('td.ml-kind', null, kindLabel[m.kind] || ''))))));
+          h('table.ml', null, list.map((m) => h('tr.ml-' + m.kind, null, h('td.ml-in', null, m.input),
+            h('td.ml-name', null, m.name, m.teleport ? h('span.ml-note', null, ' — téléportation : 2 de suite, puis 1 s de recharge') : null),
+            h('td.ml-kind', null, kindLabel[m.kind] || ''))))));
     }
   };
 

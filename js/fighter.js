@@ -5,6 +5,8 @@
 (function (C) {
   'use strict';
   const U = C.U, FX = C.FX, Rig = C.Rig, Poses = C.Poses;
+  // Téléportations : deux de suite, puis une seconde (60 images) de recharge
+  const TP_CHARGES = 2, TP_RELOAD = 60;
   const GRAV = 0.95, MAX_FALL = 22, BUFFER = 8;
   const ULTRA_HOLD = 12; // ULTRA maintenu plus longtemps : charge de l'aura au lieu du Super
   const BTN = ['a', 'b', 'c', 'g', 's', 't'];
@@ -44,6 +46,7 @@
       this.x = x; this.y = 0; this.vx = 0; this.vy = 0;
       this.zl = 0; this.vzl = 0;
       this.cool = {};
+      this.tpLeft = TP_CHARGES; this.tpCool = 0; this.tpMsg = 0;
       this.facing = facing;
       this.aim = this.battle.dirYaw(this);
       this.hp = this.maxHp; this.dispHp = this.maxHp; this.redHp = this.maxHp;
@@ -259,12 +262,25 @@
     }
 
     // Technique choisie automatiquement (mode « coups spéciaux faciles »)
+    // Le coup peut-il partir maintenant ? (temps de recharge : roulade, téléportations)
+    ready(def) {
+      if (!def) return false;
+      if (def.teleport && this.tpCool > 0) return false;
+      if (def.cooldown && this.cool[def.id] > 0) return false;
+      return true;
+    }
+    // Téléportation demandée pendant la recharge : le joueur voit pourquoi rien ne se passe
+    teleportRefused() {
+      if (!this.human || this.frame - this.tpMsg < 40) return;
+      this.tpMsg = this.frame;
+      FX.text(this.x, this.y - this.height() - 40, 'TÉLÉPORTATION EN RECHARGE', '#9fe8ff', 22, 40);
+    }
     autoSpecial() {
       const M = this.moves, o = this.opp, air = !this.onGround;
       const dist = o ? Math.abs(o.x - this.x) : 400;
       // Seulement des techniques offensives (pas de bouclier, de contre ni de concentration)
       const ok = (k) => M[k] && (air ? M[k].air : M[k].air !== 'only') && !M[k].reflect && !M[k].counter &&
-        !(M[k].ai && M[k].ai.role === 'charge');
+        !(M[k].ai && M[k].ai.role === 'charge') && this.ready(M[k]);
       let pick;
       if (o && !o.onGround && dist < 240) pick = ['U', 'N'];
       else if (dist > 380) pick = ['N', 'F'];
@@ -286,6 +302,7 @@
       if (this.parryCool > 0) this.parryCool--;
       if (this.dashCool > 0) this.dashCool--;
       for (const k in this.cool) if (this.cool[k] > 0) this.cool[k]--;
+      if (this.tpCool > 0) this.tpCool--;
       if (this.awakened > 0) {
         this.awakened--;
         if (this.awakened % 3 === 0) {
@@ -457,6 +474,12 @@
         if (this.cool[def.id] > 0) return false;
         this.cool[def.id] = (def.frames || 0) + def.cooldown;
       }
+      // Téléportations (toutes celles du combattant comptent ensemble) : deux de suite au plus, puis une
+      // seconde de recharge qui commence à la fin de la deuxième ; ensuite, de nouveau deux.
+      if (def.teleport) {
+        if (this.tpCool > 0) { this.teleportRefused(); return false; }
+        if (--this.tpLeft <= 0) { this.tpLeft = TP_CHARGES; this.tpCool = (def.frames || 0) + TP_RELOAD; }
+      }
       if (def.cost) this.meter -= def.cost;
       if (def._t0 == null) {
         // première image active : jusque-là, le combattant peut encore ajuster sa visée
@@ -524,6 +547,7 @@
         (def.kind === 'ultimate' && into.indexOf('super') >= 0);
       if (!allowed) return false;
       if (def.cost && this.meter < def.cost) return false;
+      if (!this.ready(def)) { if (def.teleport) this.teleportRefused(); return false; }
       this.pickMove(false);
       return this.startMove(id);
     }

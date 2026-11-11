@@ -11,7 +11,7 @@
       bio: "Combattant infatigable venu d'un monde où l'énergie vitale, le Ki, se maîtrise comme une arme. Lorsqu'il libère son Éveil Doré, ses cheveux s'embrasent d'or et sa puissance décuple.",
       quotes: { intro: 'Montre-moi ce que tu as dans le ventre !', win: "C'était un super combat ! On remet ça ?", lose: 'Je… je dois encore m\'entraîner…' },
       style: 'martial', aura: '#5fd3ff', awakenAura: '#ffd84a',
-      stats: { hp: 1000, walk: 4.6, dash: 13, jump: 19, airJumps: 1, weight: 1.0, power: 1.029, defense: 0.972 },
+      stats: { hp: 1000, walk: 4.6, dash: 13, jump: 19, airJumps: 1, weight: 1.0, power: 1.024, defense: 0.976 },
       rating: { puissance: 4, vitesse: 4, defense: 3, portee: 3, technique: 3 },
       look: {
         build: 'normal', head: 'human', hair: 'spiky', awaken: true, chest: 'gi', beltKnot: true,
@@ -24,7 +24,7 @@
       bio: "Prince d'une race guerrière éteinte, orgueilleux et implacable. Il a juré de surpasser Carotte, son éternel rival. Son énergie violette est aussi dévastatrice que sa fierté.",
       quotes: { intro: 'Incline-toi devant ton prince.', win: 'Pathétique. Un prince ne perd jamais.', lose: 'Impossible… Moi, battu ?!' },
       style: 'martial', aura: '#b86cff', awakenAura: '#ffd84a',
-      stats: { hp: 980, walk: 4.8, dash: 13.5, jump: 19, airJumps: 1, weight: 0.95, power: 1.065, defense: 1.014 },
+      stats: { hp: 980, walk: 4.8, dash: 13.5, jump: 19, airJumps: 1, weight: 0.95, power: 1.061, defense: 1.018 },
       rating: { puissance: 5, vitesse: 4, defense: 3, portee: 3, technique: 2 },
       look: {
         build: 'normal', head: 'human', hair: 'flame', awaken: true, chest: 'plate', browAngle: 2.2,
@@ -39,7 +39,7 @@
       bio: "Vieux magicien au chapeau pointu et à la barbe d'argent, aussi sage que redoutable. Son bâton canalise une lumière ancienne capable de repousser les ténèbres les plus profondes.",
       quotes: { intro: 'Un magicien n\'est jamais en retard pour un combat.', win: 'Retourne dans l\'ombre d\'où tu viens.', lose: 'Même la lumière… vacille parfois.' },
       style: 'staff', aura: '#f2f6ff',
-      stats: { hp: 960, walk: 3.8, dash: 11, jump: 17, airJumps: 1, weight: 0.95, power: 1.188, defense: 0.885 },
+      stats: { hp: 960, walk: 3.8, dash: 11, jump: 17, airJumps: 1, weight: 0.95, power: 1.184, defense: 0.887 },
       rating: { puissance: 4, vitesse: 2, defense: 3, portee: 5, technique: 4 },
       look: {
         build: 'old', head: 'human', hair: 'bald', beard: true, hat: 'wizard', chest: 'robe', poseSet: 'staff',
@@ -56,7 +56,7 @@
       bio: "Chevalier en armure de plates, fidèle à son serment de protéger les faibles. Lent mais inébranlable, son bouclier encaisse ce qu'aucun autre ne pourrait supporter.",
       quotes: { intro: 'Pour l\'honneur et le royaume !', win: 'Relève-toi, et va en paix.', lose: 'Mon serment… n\'est pas encore accompli.' },
       style: 'blade', aura: '#ffe08a',
-      stats: { hp: 1150, walk: 3.6, dash: 10.5, jump: 16, airJumps: 0, weight: 1.3, power: 1, defense: 0.97 },
+      stats: { hp: 1150, walk: 3.6, dash: 10.5, jump: 16, airJumps: 0, weight: 1.3, power: 0.996, defense: 0.974 },
       rating: { puissance: 5, vitesse: 2, defense: 5, portee: 4, technique: 2 },
       look: {
         build: 'heavy', head: 'knight', chest: 'tabard', armorLimbs: true, poseSet: 'blade',
@@ -73,7 +73,7 @@
       bio: "Ninja d'élite, maître de la discrétion et des techniques de substitution. Il frappe avant même qu'on l'aperçoive et disparaît dans un nuage de fumée.",
       quotes: { intro: '…', win: 'Tu n\'as vu que mon ombre.', lose: 'Le clan… me pardonnera-t-il ?' },
       style: 'martial', aura: '#ff4a4a',
-      stats: { hp: 900, walk: 5.4, dash: 15, jump: 20, airJumps: 2, weight: 0.85, power: 1.034, defense: 0.935 },
+      stats: { hp: 900, walk: 5.4, dash: 15, jump: 20, airJumps: 2, weight: 0.85, power: 1.054, defense: 0.917 },
       rating: { puissance: 2, vitesse: 5, defense: 2, portee: 3, technique: 5 },
       look: {
         build: 'slim', head: 'ninja', chest: 'ninja', scarf: ['#c62828', '#9e1b1b'],
@@ -86,7 +86,7 @@
       bio: "Samouraï au code d'honneur inflexible. Sa technique de dégainé éclair, l'Iaï, tranche avant que l'adversaire n'ait cligné des yeux.",
       quotes: { intro: 'Que nos lames parlent pour nous.', win: 'Un combat honorable. Je te salue.', lose: 'Ma lame… a manqué de résolution.' },
       style: 'blade', aura: '#ff8fb1',
-      stats: { hp: 1000, walk: 4.3, dash: 13, jump: 17.5, airJumps: 1, weight: 1.05, power: 0.979, defense: 1.071 },
+      stats: { hp: 1000, walk: 4.3, dash: 13, jump: 17.5, airJumps: 1, weight: 1.05, power: 0.976, defense: 1.075 },
       rating: { puissance: 4, vitesse: 3, defense: 3, portee: 5, technique: 4 },
       look: {
         build: 'normal', head: 'samurai', hat: 'kabuto', hair: 'bald', chest: 'samurai', poseSet: 'blade',
@@ -102,7 +102,7 @@
       bio: "Super-soldat en armure énergétique d'un futur lointain et sombre. Armé d'un fusil à bolts et d'une épée tronçonneuse, il ne connaît ni la peur ni la retraite.",
       quotes: { intro: 'Pour l\'Imperium ! Aucune pitié !', win: 'L\'hérétique est purgé.', lose: 'Mon armure… a failli…' },
       style: 'heavy', aura: '#ff6a2a',
-      stats: { hp: 1180, walk: 3.5, dash: 10, jump: 15, airJumps: 0, weight: 1.4, power: 0.996, defense: 0.951 },
+      stats: { hp: 1180, walk: 3.5, dash: 10, jump: 15, airJumps: 0, weight: 1.4, power: 0.993, defense: 0.955 },
       rating: { puissance: 5, vitesse: 2, defense: 5, portee: 4, technique: 2 },
       look: {
         build: 'titan', head: 'marine', chest: 'marine', armorLimbs: true, jetpack: true, poseSet: 'bolter', scale: 1.05,
@@ -118,7 +118,7 @@
       bio: "Élève prodige de l'Académie d'Ombrelune, il manie la baguette avec un instinct rare. Courageux jusqu'à l'imprudence, il a déjà affronté des sorciers bien plus âgés que lui.",
       quotes: { intro: 'Je n\'ai pas peur de toi !', win: 'Pas mal pour un élève de troisième année, hein ?', lose: 'J\'aurais dû réviser mes sortilèges…' },
       style: 'wand', aura: '#ff5a5a',
-      stats: { hp: 1000, walk: 4.7, dash: 13.5, jump: 18.5, airJumps: 1, weight: 0.95, power: 1.016, defense: 0.994 },
+      stats: { hp: 1000, walk: 4.7, dash: 13.5, jump: 18.5, airJumps: 1, weight: 0.95, power: 1.015, defense: 0.995 },
       // Sorts : portée et dégâts accrus des coups normaux
       tune: { reach: 1.15, dmg: 1.05 },
       rating: { puissance: 4, vitesse: 4, defense: 3, portee: 5, technique: 4 },
@@ -135,7 +135,7 @@
       bio: "Sorcier noir au visage livide, obsédé par l'immortalité. Ses sortilèges funestes et son serpent maudit sèment la terreur dans tout le monde magique.",
       quotes: { intro: 'Tu oses me défier, moi ?', win: 'Il n\'y a ni bien ni mal. Seulement le pouvoir.', lose: 'Non… NON ! C\'est impossible !' },
       style: 'wand', aura: '#42ff7a',
-      stats: { hp: 960, walk: 4.0, dash: 12, jump: 17, airJumps: 1, weight: 0.9, power: 1.255, defense: 0.912 },
+      stats: { hp: 960, walk: 4.0, dash: 12, jump: 17, airJumps: 1, weight: 0.9, power: 1.268, defense: 0.902 },
       rating: { puissance: 5, vitesse: 3, defense: 2, portee: 5, technique: 3 },
       look: {
         build: 'slim', head: 'pale', hair: 'bald', eyeStyle: 'slit', chest: 'robe', poseSet: 'wand',
@@ -151,7 +151,7 @@
       bio: "Gardien de la paix d'un ordre ancien, Lucas ressent le Flux qui relie toute chose. Son sabre à plasma bleu et ses réflexes surhumains font de lui un adversaire redoutable.",
       quotes: { intro: 'Que le Flux me guide.', win: 'La colère mène à la défaite.', lose: 'Je n\'ai pas écouté le Flux…' },
       style: 'blade', aura: '#3fa9ff',
-      stats: { hp: 1000, walk: 4.7, dash: 13.5, jump: 20, airJumps: 1, weight: 1.0, power: 0.919, defense: 1.089 },
+      stats: { hp: 1000, walk: 4.7, dash: 13.5, jump: 20, airJumps: 1, weight: 1.0, power: 0.917, defense: 1.091 },
       rating: { puissance: 3, vitesse: 4, defense: 3, portee: 4, technique: 5 },
       look: {
         build: 'normal', head: 'human', hair: 'cap', chest: 'tunic', poseSet: 'blade',
@@ -166,7 +166,7 @@
       bio: "Chevalier déchu engoncé dans une armure noire qui le maintient en vie. Son souffle mécanique annonce la fin de ceux qui osent le défier. Sa poigne psychique peut étouffer à distance.",
       quotes: { intro: 'Ta défaite est déjà écrite.', win: 'Tu as sous-estimé le côté obscur du Flux.', lose: 'Le maître… sera déçu.' },
       style: 'blade', aura: '#ff2323',
-      stats: { hp: 1150, walk: 4.0, dash: 12, jump: 15.5, airJumps: 0, weight: 1.35, power: 1.031, defense: 0.941 },
+      stats: { hp: 1150, walk: 4.0, dash: 12, jump: 15.5, airJumps: 0, weight: 1.35, power: 1.029, defense: 0.943 },
       tune: { reach: 1.12 },
       rating: { puissance: 5, vitesse: 2, defense: 4, portee: 4, technique: 3 },
       look: {
@@ -184,7 +184,7 @@
       bio: "Vieillard encapuchonné qui règne sur une galaxie entière par la peur. Ses mains déchaînent des éclairs sombres d'une puissance illimitée. Son rire glace le sang.",
       quotes: { intro: 'Ta haine te rendra plus fort… à mon service.', win: 'Pouvoir… ABSOLU !', lose: 'Comment… est-ce possible ?!' },
       style: 'caster', aura: '#8ab4ff',
-      stats: { hp: 940, walk: 3.7, dash: 12, jump: 16.5, airJumps: 1, weight: 0.9, power: 1.072, defense: 0.98 },
+      stats: { hp: 940, walk: 3.7, dash: 12, jump: 16.5, airJumps: 1, weight: 0.9, power: 1.069, defense: 0.984 },
       rating: { puissance: 5, vitesse: 3, defense: 2, portee: 4, technique: 4 },
       look: {
         build: 'old', head: 'human', hat: 'hood', hair: 'bald', eyeStyle: 'glow', wrinkles: true, chest: 'robe',
@@ -199,7 +199,7 @@
       bio: "Soldat d'élite de l'armée impériale en armure blanche. Ses tirs de blaster ne sont pas toujours précis… mais ils sont très nombreux. Il n'est jamais vraiment seul.",
       quotes: { intro: 'Halte ! Contrôle d\'identité !', win: 'Cible neutralisée. Je l\'ai eue, chef !', lose: 'Envoyez… des renforts…' },
       style: 'rifle', aura: '#ff4040',
-      stats: { hp: 950, walk: 4.4, dash: 12.5, jump: 17, airJumps: 0, weight: 1.0, power: 1.05, defense: 0.904 },
+      stats: { hp: 950, walk: 4.4, dash: 12.5, jump: 17, airJumps: 0, weight: 1.0, power: 1.046, defense: 0.907 },
       rating: { puissance: 3, vitesse: 3, defense: 3, portee: 5, technique: 3 },
       look: {
         build: 'normal', head: 'trooper', chest: 'trooper', trooperLimbs: true, poseSet: 'rifle',
@@ -213,7 +213,7 @@
       bio: "Créature ailée dont la queue porte une flamme éternelle. Fier et sauvage, il crache des torrents de feu capables de faire fondre la roche. Il vole avec une aisance déconcertante.",
       quotes: { intro: 'RRROOOAAAR !', win: 'Grrrr… (souffle une gerbe de flammes)', lose: 'Grrr… (sa flamme vacille)' },
       style: 'creature', aura: '#ff8a1a',
-      stats: { hp: 1080, walk: 4.0, dash: 12, jump: 17, airJumps: 2, weight: 1.25, power: 1.014, defense: 1.002 },
+      stats: { hp: 1080, walk: 4.0, dash: 12, jump: 17, airJumps: 2, weight: 1.25, power: 1.011, defense: 1.005 },
       rating: { puissance: 5, vitesse: 3, defense: 4, portee: 4, technique: 2 },
       look: {
         build: 'dragon', head: 'dragon', chest: 'belly', bellyStripes: true, poseSet: 'creature', scale: 1.1,
@@ -228,7 +228,7 @@
       bio: "Minuscule créature rose qui flotte dans les airs, aussi espiègle que mystérieuse. On raconte qu'elle porte en elle le code génétique de toutes les créatures du monde.",
       quotes: { intro: 'Mew ? Miou !', win: 'Miouuu ! (fait une pirouette)', lose: 'Miou… (se roule en boule)' },
       style: 'tiny', aura: '#ff9ad6',
-      stats: { hp: 860, walk: 4.8, dash: 14, jump: 16, airJumps: 4, weight: 0.65, power: 1.142, defense: 0.85, float: true },
+      stats: { hp: 860, walk: 4.8, dash: 14, jump: 16, airJumps: 4, weight: 0.65, power: 1.151, defense: 0.843, float: true },
       rating: { puissance: 2, vitesse: 4, defense: 1, portee: 4, technique: 5 },
       look: {
         build: 'small', head: 'cat', poseSet: 'float', hover: 46, armSkin: true, portraitZoom: 1.25,
@@ -242,7 +242,7 @@
       bio: "Créature psychique créée en laboratoire à partir de l'ADN de Miaou. Froid et surpuissant, il méprise ses créateurs et cherche le sens de sa propre existence.",
       quotes: { intro: 'Je n\'ai pas demandé à naître.', win: 'Ta volonté est aussi fragile que ton corps.', lose: 'Qui suis-je… vraiment ?' },
       style: 'martial', aura: '#b46cff',
-      stats: { hp: 1000, walk: 4.3, dash: 13, jump: 18, airJumps: 1, weight: 1.0, power: 1.092, defense: 0.989, float: false },
+      stats: { hp: 1000, walk: 4.3, dash: 13, jump: 18, airJumps: 1, weight: 1.0, power: 1.091, defense: 0.99, float: false },
       rating: { puissance: 5, vitesse: 4, defense: 3, portee: 4, technique: 3 },
       look: {
         build: 'psy', head: 'psy', chest: 'belly', armSkin: true, tube: true, scale: 1.05,
@@ -256,7 +256,7 @@
       bio: "Petit par la taille, immense par l'ambition. Napoléon Bonaparte commande ses batailles comme une partie d'échecs : son sabre ouvre la voie, ses canons font le reste, et sa Vieille Garde ne recule jamais.",
       quotes: { intro: 'Impossible n\'est pas français !', win: 'Du haut de cette arène, une victoire de plus me contemple.', lose: 'Ce n\'est qu\'un petit Waterloo…' },
       style: 'blade', aura: '#ffd23f',
-      stats: { hp: 980, walk: 4.3, dash: 13, jump: 17.5, airJumps: 1, weight: 1.05, power: 1.028, defense: 0.973 },
+      stats: { hp: 980, walk: 4.3, dash: 13, jump: 17.5, airJumps: 1, weight: 1.05, power: 1.026, defense: 0.975 },
       tune: { reach: 0.93 },
       rating: { puissance: 5, vitesse: 3, defense: 4, portee: 5, technique: 5 },
       look: {
@@ -272,7 +272,7 @@
       bio: "Maître du ciel et père des dieux. Zeus lance la foudre comme d'autres lancent des cailloux, et sa colère fait trembler les montagnes. Les failles l'ont tiré de son trône… et il est de très mauvaise humeur.",
       quotes: { intro: 'Mortel, tu oses défier le roi de l\'Olympe ?', win: 'Que le tonnerre porte mon nom !', lose: 'Par ma barbe… les mortels ont bien changé.' },
       style: 'martial', aura: '#ffe14a',
-      stats: { hp: 1080, walk: 3.9, dash: 11.5, jump: 16, airJumps: 1, weight: 1.3, power: 0.963, defense: 1.039 },
+      stats: { hp: 1080, walk: 3.9, dash: 11.5, jump: 16, airJumps: 1, weight: 1.3, power: 0.961, defense: 1.042 },
       tune: { reach: 1.05 },
       rating: { puissance: 5, vitesse: 2, defense: 4, portee: 5, technique: 3 },
       look: {
@@ -291,7 +291,7 @@
       quotes: { intro: 'Salut toi, derrière l\'écran ! Regarde-moi gagner !', win: 'Trop facile ! On remet une pièce dans la machine ?', lose: 'Aïe. Bon… ça repousse.' },
       style: 'blade', aura: '#ff3b3b',
       // regen : ses points de vie remontent tout seuls quand il n'est pas en train de prendre un coup
-      stats: { hp: 940, walk: 4.9, dash: 14.5, jump: 19.5, airJumps: 1, weight: 0.95, power: 0.953, defense: 1.049, regen: 0.05 },
+      stats: { hp: 940, walk: 4.9, dash: 14.5, jump: 19.5, airJumps: 1, weight: 0.95, power: 0.95, defense: 1.052, regen: 0.05 },
       tune: { reach: 0.93 },
       rating: { puissance: 4, vitesse: 5, defense: 3, portee: 4, technique: 5 },
       look: {
@@ -306,7 +306,7 @@
       bio: "Entité née du vide entre les univers. Oméga a brisé le Cœur des Mondes pour arracher les plus grands guerriers à leur réalité et absorber leur puissance. Rien ne lui résiste… pour l'instant.",
       quotes: { intro: 'Ton monde n\'est qu\'un repas de plus.', win: 'Tout retourne au Néant.', lose: 'Le Néant… est éternel…' },
       style: 'martial', aura: '#ff3df2', boss: true,
-      stats: { hp: 1200, walk: 4.2, dash: 13, jump: 17, airJumps: 1, weight: 1.4, power: 0.87, defense: 1.139 },
+      stats: { hp: 1200, walk: 4.2, dash: 13, jump: 17, airJumps: 1, weight: 1.4, power: 0.877, defense: 1.13 },
       rating: { puissance: 5, vitesse: 3, defense: 5, portee: 5, technique: 4 },
       look: {
         build: 'titan', head: 'void', chest: 'void', armSkin: true, scale: 1.18,

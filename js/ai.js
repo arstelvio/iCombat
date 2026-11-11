@@ -58,7 +58,8 @@
     has(f, id) { return !!f.moves[id]; }
     role(f, role) {
       const out = [];
-      ['N', 'F', 'U', 'D'].forEach((k) => { const m = f.moves[k]; if (m && m.ai && m.ai.role === role) out.push(k); });
+      // (les techniques en recharge, comme les téléportations, ne sont pas proposées)
+      ['N', 'F', 'U', 'D'].forEach((k) => { const m = f.moves[k]; if (m && m.ai && m.ai.role === role && (!f.ready || f.ready(m))) out.push(k); });
       return out;
     }
     reach(f, id) {
