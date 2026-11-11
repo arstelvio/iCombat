@@ -281,7 +281,7 @@
           h('div.logo-sub', null, 'Le tournoi des mondes')),
         h('div.press.blink', null, C.touchDevice ? 'Touchez l\'écran pour commencer' : 'Appuyez sur une touche pour commencer'),
         C.Pwa && C.Pwa.iosBrowser ? h('div.install-tip', null, '📲 Plein écran et hors ligne : Partager → « Sur l\'écran d\'accueil »') : null,
-        h('div.footer', null, 'v2.1 · Arènes 3D · 20 combattants + ton héros · Créations originales'));
+        h('div.footer', null, 'v2.2 · Arènes 3D · 20 combattants + ton héros · Jeu en ligne · Créations originales'));
       return el;
     },
     onAny() { C.Audio.init(); C.Audio.music('menu'); UI.go('slots', {}, { reset: true }); },
@@ -817,6 +817,11 @@
       h('div.pcard-char', null, playerChar(p)),
       h('div.pcard-state', null, p.ready ? '✅ PRÊT !' : '⏳ se prépare…'));
   }
+  // Chemin de la connexion et temps d'aller-retour
+  function routeLabel(r) {
+    const way = r.direct && r.direct.open ? 'directe' : 'par relais';
+    return 'Connexion ' + way + (r.rtt ? ' · ' + Math.round(r.rtt) + ' ms' : '');
+  }
   function shareCode(code) {
     const url = C.Net.shareLink(code);
     const text = 'Viens te battre contre moi dans Choc des Légendes ! Code de la salle : ' + code;
@@ -887,7 +892,7 @@
         return h('div', null, topbar('Salle', back),
           h('div.center-panel', null,
             h('div.pcard-wait.big', null, h('span.dot'), h('span.dot'), h('span.dot')),
-            h('p', null, r.role === 'host' ? 'Ouverture de la salle…' : 'Connexion à la salle ' + r.code + '…'),
+            h('p', null, (r.role === 'host' ? '' : 'Salle ' + r.code + ' — ') + (r.step || 'Connexion…')),
             h('div.res-btns', null, btn('✖ Annuler', back))));
       }
       const host = r.role === 'host';
@@ -903,7 +908,7 @@
         ? chips([{ label: '1', value: 1 }, { label: '2', value: 2 }, { label: '3', value: 3 }], r.cfg.rounds, (v) => r.setCfg({ rounds: v }))
         : h('span.room-val', null, String(r.cfg.rounds));
       const ready = r.me.ready;
-      const ping = h('div.room-ping', null, r.other ? 'Connexion ' + (r.routeName || '…') + ' · ' + (r.rtt ? Math.round(r.rtt) + ' ms' : '…') : '');
+      const ping = h('div.room-ping', null, r.other ? routeLabel(r) : '');
       return h('div', null,
         topbar(host ? 'Ta salle' : 'Salle de ' + (r.other ? r.other.name : 'ton ami'), back),
         h('div.room-body', null,
@@ -979,12 +984,8 @@
       const cur = UI.current && UI.current.name;
       if (type === 'ping') {
         if (cur !== 'room') return;
-        if (!room.routeAsked || performance.now() - room.routeAsked > 5000) {
-          room.routeAsked = performance.now();
-          room.route().then((v) => { room.routeName = v || room.routeName; });
-        }
         const el = document.querySelector('.room-ping');
-        if (el) el.textContent = 'Connexion ' + (room.routeName || '…') + ' · ' + Math.round(room.rtt) + ' ms';
+        if (el) el.textContent = routeLabel(room);
         return;
       }
       if (cur === 'room' && !UI.modalEl) UI.refresh();

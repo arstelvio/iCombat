@@ -29,7 +29,8 @@ Deux joueurs, chacun sur son téléphone, même loin l'un de l'autre (il faut In
 4. Le combat commence ; chacun se voit à gauche de son écran. À la fin : **🔁 Revanche !**
 
 Les deux téléphones doivent avoir la même version du jeu (ouvrez-le avec Internet et revenez à l'écran titre
-pour installer une mise à jour).
+pour installer une mise à jour). Ça marche en Wi-Fi comme en 4G, même sur deux réseaux différents : la salle
+indique « Connexion directe » ou « Connexion par relais ».
 
 ## 🧊 Des combats en 2D dans un décor en 3D
 
@@ -87,5 +88,6 @@ Le lien fonctionne une à deux minutes plus tard.
 
 Polices : Bangers et Russo One, sous licence SIL Open Font License (voir `fonts/`).
 Rendu 3D : [three.js](https://threejs.org), licence MIT (voir `lib/LICENSE-three.txt`).
-Jeu en ligne : [PeerJS](https://peerjs.com), licence MIT (voir `lib/LICENSE-peerjs.txt`) ; le serveur public de PeerJS
-sert seulement à se retrouver avec le code, ensuite les deux téléphones se parlent directement.
+Jeu en ligne : relais public de messages (MQTT : EMQX, HiveMQ ou Mosquitto), avec des messages chiffrés par une clé
+tirée du code de la salle ; liaison directe entre les téléphones quand c'est possible, avec
+[PeerJS](https://peerjs.com), licence MIT (voir `lib/LICENSE-peerjs.txt`).
